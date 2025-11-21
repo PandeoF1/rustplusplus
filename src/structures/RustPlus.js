@@ -83,6 +83,8 @@ class RustPlus extends RustPlusLib {
 
         /* Stores found vending machine items that are subscribed to */
         this.foundSubscriptionItems = { all: [], buy: [], sell: [] };
+        this.currentOrderList = [];  /* Stores the current order list from the market. */
+        this.currentOrderPage = 1;  /* Stores the current order page from the market. */
 
         /* When a new item is added to subscription list, dont notify about the already available items. */
         this.firstPollItems = { all: [], buy: [], sell: [] };
@@ -1715,6 +1717,8 @@ class RustPlus extends RustPlusLib {
         const prefix = this.generalSettings.prefix;
         const commandMarket = `${prefix}${Client.client.intlGet(this.guildId, 'commandSyntaxMarket')}`;
         const commandMarketEn = `${prefix}${Client.client.intlGet('en', 'commandSyntaxMarket')}`;
+        const commandNext = `${Client.client.intlGet(this.guildId, 'commandSyntaxNext')}`;
+        const commandNextEn = `${Client.client.intlGet('en', 'commandSyntaxNext')}`;
         const commandSearch = `${Client.client.intlGet(this.guildId, 'commandSyntaxSearch')}`;
         const commandSearchEn = `${Client.client.intlGet('en', 'commandSyntaxSearch')}`;
         const commandSub = `${Client.client.intlGet(this.guildId, 'commandSyntaxSubscribe')}`;
@@ -1724,18 +1728,36 @@ class RustPlus extends RustPlusLib {
         const commandList = `${Client.client.intlGet(this.guildId, 'commandSyntaxList')}`;
         const commandListEn = `${Client.client.intlGet('en', 'commandSyntaxList')}`;
 
+        //Remove market part of the command -> search sell itemname
         if (command.toLowerCase().startsWith(`${commandMarket} `)) {
             command = command.slice(`${commandMarket} `.length).trim();
         }
         else {
             command = command.slice(`${commandMarketEn} `.length).trim();
         }
+        //Get subcommand and remove it from the command -> sell itemname
         const subcommand = command.replace(/ .*/, '');
         command = command.slice(subcommand.length + 1);
 
+        //Get ordertype from the command -> ordertype
         const orderType = command.replace(/ .*/, '');
-        const name = command.slice(orderType.length + 1);
+        let remainingCommand = command.slice(orderType.length + 1);
+        
+        let showImages = false;
+        let name = '';
 
+        //Check if images should be shown and get the item name -> itemname
+        if (remainingCommand.toLowerCase().startsWith('image ')) {
+            showImages = true;
+            name = remainingCommand.slice('image '.length).trim();
+            } 
+        else {
+            name = remainingCommand.trim();
+            }
+
+        const ORDERS_PER_PAGE = 10;
+        const orders = [];
+        let foundOrders = 0;
         switch (subcommand) {
             case commandSearchEn:
             case commandSearch: {
@@ -1752,7 +1774,7 @@ class RustPlus extends RustPlusLib {
                     });
                 }
 
-                const orders = [];
+                
                 for (const vendingMachine of this.mapMarkers.vendingMachines) {
                     if (!vendingMachine.hasOwnProperty('sellOrders')) continue;
 
@@ -1770,24 +1792,115 @@ class RustPlus extends RustPlusLib {
                             (orderItemId === parseInt(itemId) || orderCurrencyId === parseInt(itemId))) ||
                             (orderType === 'buy' && orderCurrencyId === parseInt(itemId)) ||
                             (orderType === 'sell' && orderItemId === parseInt(itemId))) {
-                                orders.push(
-                                    {
-                                        text: `${Client.client.intlGet(this.guildId, 'foundItemInVendingMachine', {
-                                            item: Client.client.items.getName(parseInt(orderItemId)),
-                                            price: Client.client.items.getName(parseInt(orderCurrencyId)),
-                                            stock: order.amountInStock,
-                                            location: vendingMachine.location.string
-                                        })}`
-                                    });
+                                orders.push({
+                                    text: `${Client.client.intlGet(this.guildId, 'foundItemInVendingMachine', {
+                                        item: (showImages) ? `:${Client.client.items.getShortName(order.itemId)}:` : ` ${Client.client.items.getName(order.itemId)}`,
+                                        quantity: order.quantity,
+                                        price: (showImages) ? `:${Client.client.items.getShortName(order.currencyId)}:` : ` ${Client.client.items.getName(order.currencyId)}`,
+                                        priceAmount: order.costPerItem,
+                                        stock: order.amountInStock,
+                                        location: vendingMachine.location.string
+                                    })}`
+                                }
+                            );
                             }
                     }
                 }
 
                 if (orders.length === 0) {
+                    delete this.currentOrdersList;
+                    delete this.currentOrderPage;
                     return Client.client.intlGet(this.guildId, 'noItemFound');
                 }
+                
+                foundOrders = orders.length;
+                const totalPages = Math.ceil(foundOrders / ORDERS_PER_PAGE);
+                
+                this.currentOrdersList = orders;
+                this.currentOrderPage = 1;
+                
+                const firstPageOrders = orders.slice(0, ORDERS_PER_PAGE);
+                
+                if( totalPages > 1) {
+                    this.sendInGameMessage(
+                    Client.client.intlGet(this.guildId, 'foundOrdersSummary', {
+                        foundOrders: foundOrders,
+                        currentPage: 1,
+                        totalPages: totalPages,
+                        nextCommand: `${prefix}market next`
+                    }));
+                }
+                if (totalPages === 1) {
+                    this.sendInGameMessage(
+                    Client.client.intlGet(this.guildId, 'foundOrdersSummaryNoNext', {
+                        foundOrders: foundOrders
+                    }));
+                }
+                
+                for (let i = 0; i < firstPageOrders.length; i++) {
+                    const order = firstPageOrders[i];
+                    
+                    const delay = i * 150; 
 
-                return orders;
+                    setTimeout(() => {
+                        this.sendInGameMessage(order.text); 
+                    }, delay);
+                }
+
+                return null;
+            } break;
+
+            case commandNextEn:
+            case commandNext: {
+                const orders = this.currentOrdersList;
+                let currentPage = this.currentOrderPage || 0;
+
+                if (!Array.isArray(orders) || orders.length === 0 || currentPage === 0) {
+                    delete this.currentOrdersList;
+                    delete this.currentOrderPage;
+                    return Client.client.intlGet(this.guildId, 'noMorePages');
+                }
+
+                const totalPages = Math.ceil(orders.length / ORDERS_PER_PAGE);
+
+                if (currentPage >= totalPages) {
+                    delete this.currentOrdersList;
+                    delete this.currentOrderPage;
+                    return Client.client.intlGet(this.guildId, 'noMorePages');
+                }
+
+                currentPage += 1;
+                this.currentOrderPage = currentPage;
+
+                const startIndex = (currentPage - 1) * ORDERS_PER_PAGE;
+                const endIndex = startIndex + ORDERS_PER_PAGE;
+                const nextPageOrders = orders.slice(startIndex, endIndex);
+
+                this.sendInGameMessage(
+                    Client.client.intlGet(this.guildId, 'foundOrdersSummary', {
+                        foundOrders: orders.length,
+                        currentPage: currentPage,
+                        totalPages: totalPages,
+                        nextCommand: (currentPage < totalPages) ? 'market next' : ''
+                    })
+                );
+
+                for (let i = 0; i < nextPageOrders.length; i++) {
+                    const order = nextPageOrders[i];
+                    
+                    const delay = i * 150; 
+
+                    setTimeout(() => {
+                        this.sendInGameMessage(order.text); 
+                    }, delay);
+                }
+                
+                if (currentPage >= totalPages) {
+                    delete this.currentOrdersList;
+                    delete this.currentOrderPage;
+                }
+
+                return null; 
             } break;
 
             case commandSubEn:
