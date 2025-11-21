@@ -100,7 +100,7 @@ module.exports = {
         }
         else if (commandLowerCase.startsWith(`${prefix}${client.intlGet('en', 'commandSyntaxMarket')} `) ||
             commandLowerCase.startsWith(`${prefix}${client.intlGet(guildId, 'commandSyntaxMarket')} `)) {
-            response = rustplus.getCommandMarket(command);
+            response = client.intlGet(rustplus.guildId, 'commandNotPossibleDiscord');
         }
         else if (commandLowerCase === `${prefix}${client.intlGet('en', 'commandSyntaxMute')}` ||
             commandLowerCase === `${prefix}${client.intlGet(guildId, 'commandSyntaxMute')}`) {

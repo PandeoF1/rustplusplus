@@ -383,6 +383,7 @@
     "fishingVillage": "Fishing Village",
     "five": "Five",
     "four": "Four",
+    "foundItemInVendingMachine" : "{item} for {price} ({stock}) @ {location}",
     "giantExcavatorPit": "Giant Excavator Pit",
     "greaterThanSign": "Greater-than Sign",
     "groupAddSwitchDesc": "Add Switch to {group}",

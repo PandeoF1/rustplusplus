@@ -1752,7 +1752,7 @@ class RustPlus extends RustPlusLib {
                     });
                 }
 
-                const locations = [];
+                const orders = [];
                 for (const vendingMachine of this.mapMarkers.vendingMachines) {
                     if (!vendingMachine.hasOwnProperty('sellOrders')) continue;
 
@@ -1770,17 +1770,24 @@ class RustPlus extends RustPlusLib {
                             (orderItemId === parseInt(itemId) || orderCurrencyId === parseInt(itemId))) ||
                             (orderType === 'buy' && orderCurrencyId === parseInt(itemId)) ||
                             (orderType === 'sell' && orderItemId === parseInt(itemId))) {
-                            if (locations.includes(vendingMachine.location.location)) continue;
-                            locations.push(vendingMachine.location.location);
-                        }
+                                orders.push(
+                                    {
+                                        text: `${Client.client.intlGet(this.guildId, 'foundItemInVendingMachine', {
+                                            item: Client.client.items.getName(parseInt(orderItemId)),
+                                            price: Client.client.items.getName(parseInt(orderCurrencyId)),
+                                            stock: order.amountInStock,
+                                            location: vendingMachine.location.string
+                                        })}`
+                                    });
+                            }
                     }
                 }
 
-                if (locations.length === 0) {
+                if (orders.length === 0) {
                     return Client.client.intlGet(this.guildId, 'noItemFound');
                 }
 
-                return locations.join(', ');
+                return orders;
             } break;
 
             case commandSubEn:
