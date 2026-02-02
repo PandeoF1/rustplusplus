@@ -975,7 +975,7 @@ class RustPlusWebUI {
     
     drawDynamicLayers() {
         this.dynamicCtx.clearRect(0, 0, this.dynamicCanvas.width, this.dynamicCanvas.height);
-        if (!this.serverData) return;
+        if (!this.serverData || !this.mapImage) return;
         
         const ctx = this.dynamicCtx;
         
