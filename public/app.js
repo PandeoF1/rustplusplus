@@ -1451,6 +1451,7 @@ class RustPlusWebUI {
             const { x, y } = this.worldToCanvas(p.x, p.y);
             const size = 10 / this.scale;
             const avatar = this.playerAvatars[p.steamId];
+            const playerColor = this.getPlayerColor(p.steamId);
             
             // Draw avatar if loaded, otherwise draw colored circle
             if (avatar) {
@@ -1461,16 +1462,15 @@ class RustPlusWebUI {
                 ctx.drawImage(avatar, x - size, y - size, size * 2, size * 2);
                 ctx.restore();
                 
-                // Draw status border
-                ctx.strokeStyle = p.isAlive ? '#4caf50' : '#f44336';
+                // Draw colored border with player's unique color (dimmed if dead)
+                ctx.strokeStyle = p.isAlive ? playerColor : `${playerColor}80`;
                 ctx.lineWidth = 2 / this.scale;
                 ctx.beginPath();
                 ctx.arc(x, y, size, 0, Math.PI * 2);
                 ctx.stroke();
             } else {
-                // Fallback to colored circle
-                const color = p.isAlive ? '#4caf50' : '#f44336';
-                ctx.fillStyle = color;
+                // Fallback to colored circle using player's unique color
+                ctx.fillStyle = p.isAlive ? playerColor : `${playerColor}80`;
                 ctx.strokeStyle = 'white';
                 ctx.lineWidth = 2 / this.scale;
                 ctx.beginPath();
@@ -1570,6 +1570,7 @@ class RustPlusWebUI {
                 const isCenter = p.steamId === centerPlayer.steamId;
                 const markerSize = 10;
                 const avatar = this.playerAvatars[p.steamId];
+                const playerColor = this.getPlayerColor(p.steamId);
                 
                 // Draw avatar if loaded
                 if (avatar) {
@@ -1580,15 +1581,15 @@ class RustPlusWebUI {
                     ctx.drawImage(avatar, mx - markerSize, my - markerSize, markerSize * 2, markerSize * 2);
                     ctx.restore();
                     
-                    // Draw status border
-                    ctx.strokeStyle = p.isAlive ? '#4caf50' : '#f44336';
+                    // Draw colored border with player's unique color (dimmed if dead)
+                    ctx.strokeStyle = p.isAlive ? playerColor : `${playerColor}80`;
                     ctx.lineWidth = 2;
                     ctx.beginPath();
                     ctx.arc(mx, my, markerSize, 0, Math.PI * 2);
                     ctx.stroke();
                 } else {
-                    // Fallback to colored circles
-                    ctx.fillStyle = p.isAlive ? '#4caf50' : '#f44336';
+                    // Fallback to colored circles using player's unique color
+                    ctx.fillStyle = p.isAlive ? playerColor : `${playerColor}80`;
                     ctx.strokeStyle = 'white';
                     ctx.lineWidth = 2;
                     ctx.beginPath();
