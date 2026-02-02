@@ -287,18 +287,26 @@ class WebServer {
     }
 
     startUpdateInterval() {
-        /* Update cache and broadcast to all connected clients every 6.5 seconds */
+        /* Update cache and broadcast to all connected clients
+         * Uses same interval as polling to stay synchronized
+         * This does NOT make additional Rust+ API calls - it only broadcasts
+         * the data that was already fetched by the polling handler */
+        const updateInterval = this.client.pollingIntervalMs || 10000;
+        
+        this.client.log(this.client.intlGet(null, 'infoCap'), 
+            `WebUI: broadcasting updates every ${updateInterval}ms (synced with polling)`);
+        
         setInterval(() => {
             for (const [guildId, rustplus] of Object.entries(this.client.rustplusInstances)) {
                 if (!rustplus || !rustplus.isOperational) continue;
-                // Force refresh cache and get new data
+                // Force refresh cache and get new data (from memory, not Rust+ API)
                 const data = this.getServerData(guildId, false);
                 if (data) {
                     // Broadcast to all clients subscribed to this guild
                     this.io.to(`guild-${guildId}`).emit('serverUpdate', data);
                 }
             }
-        }, 5000);
+        }, updateInterval);
     }
 
     start() {
