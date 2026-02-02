@@ -54,7 +54,6 @@ class AuthManager {
         }
 
         this.guildId = guildId;
-
         // Check session first
         if (this.checkSessionAuth()) {
             return true;
@@ -64,13 +63,11 @@ class AuthManager {
             // Check if pin code is configured
             const pinStatus = await this.apiClient.get(`/api/statistics/pin-status/${guildId}`);
             this.hasPinCode = pinStatus.hasPinCode;
-
             if (!this.hasPinCode) {
                 // No pin code set, allow access
                 this.isAuthenticated = true;
                 return true;
             }
-
             return false; // Need to authenticate
         } catch (error) {
             console.error('Error checking PIN status:', error);
@@ -98,7 +95,6 @@ class AuthManager {
             const modal = document.createElement('div');
             modal.id = 'globalPinModal';
             modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 100000;';
-
             modal.innerHTML = `
                 <div style="background: var(--bg-primary); padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); max-width: 400px; width: 90%;">
                     <h2 style="text-align: center; margin-bottom: 10px; color: var(--text-primary);">🔒 Protected Access</h2>
@@ -158,7 +154,6 @@ class AuthManager {
                     submitBtn.textContent = '🔓 Unlock';
                 }
             };
-
             submitBtn.onclick = submit;
             input.onkeypress = (e) => {
                 if (e.key === 'Enter') submit();
@@ -166,7 +161,6 @@ class AuthManager {
             input.oninput = () => {
                 input.style.borderColor = 'var(--border)';
             };
-
             // Add hover effect
             submitBtn.onmouseenter = () => {
                 if (!submitBtn.disabled) {
@@ -178,7 +172,6 @@ class AuthManager {
                 submitBtn.style.transform = 'scale(1)';
                 submitBtn.style.boxShadow = 'none';
             };
-
             setTimeout(() => input.focus(), 100);
         });
     }

@@ -92,7 +92,6 @@ class RustPlusWebUI {
             'stables': { name: 'Stables', emoji: '🐴' },
             'stables_a': { name: 'Ranch', emoji: '🐄' },
             'stables_b': { name: 'Large Barn', emoji: '🏚️' },
-
             // Display name variants (with _display_name suffix)
             'airfield_display_name': { name: 'Airfield', emoji: '✈️' },
             'arctic_base_display_name': { name: 'Arctic Research Base', emoji: '🏔️' },
@@ -146,7 +145,6 @@ class RustPlusWebUI {
             'mining_quarry_stone_display_name': { name: 'Stone Quarry', emoji: '🪨' },
             'mining_quarry_hqm_display_name': { name: 'HQM Quarry', emoji: '🪨' }
         };
-
         // Canvas layers
         this.backgroundCanvas = null;
         this.backgroundCtx = null;
@@ -165,7 +163,6 @@ class RustPlusWebUI {
         this.isDragging = false;
         this.lastX = 0;
         this.lastY = 0;
-
         // Control states
         this.controls = {
             showPlayers: true,
@@ -199,7 +196,6 @@ class RustPlusWebUI {
         this.lastRenderTime = 0;
         this.dirtyStatic = true;
         this.dirtyDynamic = true;
-
         // Minimap properties
         this.minimapCanvas = null;
         this.minimapCtx = null;
@@ -213,7 +209,6 @@ class RustPlusWebUI {
         this.minimapBaseCanvas = null;
         this.minimapBaseCtx = null;
         this.minimapBaseDirty = true;
-
         // Player avatars cache
         this.playerAvatars = {};
         this.loadAvatars = true;
@@ -338,18 +333,15 @@ class RustPlusWebUI {
             canvas.width = containerWidth;
             canvas.height = containerHeight;
         });
-
         // Compute base scale to fit map image into container
         const prevBaseScale = this.baseScale || 1;
         const zoomRatio = this.scale / prevBaseScale;
         this.baseScale = Math.min(containerWidth / this.mapImage.width, containerHeight / this.mapImage.height);
         this.scale = this.baseScale * zoomRatio;
-
         // Recalculate world rect based on the original map image size
         if (this.serverData?.info) {
             this.worldRect = this.computeWorldRectFromWorldSize(this.mapImage.width, this.mapImage.height, this.serverData.info.mapSize);
         }
-
         // Redraw everything
         this.dirtyStatic = true;
         this.dirtyDynamic = true;
@@ -363,7 +355,6 @@ class RustPlusWebUI {
         this.minimapCanvas.height = this.minimapSize;
         this.minimapBaseCanvas = document.createElement('canvas');
         this.minimapBaseCtx = this.minimapBaseCanvas.getContext('2d');
-
         this.minimapCanvas.addEventListener('wheel', (e) => {
             e.preventDefault();
             const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
@@ -387,7 +378,6 @@ class RustPlusWebUI {
                 e.preventDefault();
             }
         });
-
         this.minimapCanvas.addEventListener('mousemove', (e) => {
             if (isPanning) {
                 const dx = e.clientX - panStartX;
@@ -415,7 +405,6 @@ class RustPlusWebUI {
                 e.preventDefault();
             }
         });
-
         this.minimapCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
     }
 
@@ -580,7 +569,6 @@ class RustPlusWebUI {
                 this.needsRender = true;
             }
         });
-
         this.socket.on('teamDeath', (data) => {
             if (data.x && data.y && data.player_name) {
                 const now = Date.now();
@@ -696,7 +684,6 @@ class RustPlusWebUI {
                         this.dirtyStatic = true;
                     }
                     this.dirtyDynamic = true;
-
                     // Show/hide death markers config and fetch data
                     if (key === 'showDeathMarkers') {
                         const config = document.getElementById('deathMarkersConfig');
@@ -729,7 +716,6 @@ class RustPlusWebUI {
                 }
             });
         }
-
         // Refresh death markers button
         const refreshBtn = document.getElementById('refreshDeathMarkers');
         if (refreshBtn) {
@@ -739,7 +725,6 @@ class RustPlusWebUI {
                 }
             });
         }
-
         // Trail duration slider
         const trailSlider = document.getElementById('trailDurationSlider');
         const trailValue = document.getElementById('trailDurationValue');
@@ -748,19 +733,16 @@ class RustPlusWebUI {
             const currentMinutes = Math.round(this.trailDuration / 60000);
             trailSlider.value = currentMinutes;
             trailValue.textContent = currentMinutes;
-
             trailSlider.addEventListener('input', (e) => {
                 const minutes = parseInt(e.target.value);
                 trailValue.textContent = minutes;
                 this.trailDuration = minutes * 60000; // Convert to milliseconds
                 localStorage.setItem('trailDuration', this.trailDuration.toString());
-
                 // Clear existing trails to apply new duration immediately
                 Object.keys(this.playerTrails).forEach(steamId => {
                     const trails = this.playerTrails[steamId] || [];
                     this.playerTrails[steamId] = trails.filter(t => t.time > Date.now() - this.trailDuration);
                 });
-
                 this.dirtyDynamic = true;
                 this.needsRender = true;
             });
@@ -772,7 +754,6 @@ class RustPlusWebUI {
         document.getElementById('toggleFullscreen').addEventListener('click', () => this.toggleFullscreen());
 
         const wrapper = this.dynamicCanvas;
-
         wrapper.addEventListener('mousedown', (e) => {
             this.isDragging = true;
             this.lastX = e.clientX;
@@ -805,19 +786,16 @@ class RustPlusWebUI {
             this.dirtyDynamic = true;
             this.needsRender = true;
         });
-
         document.getElementById('minimapZoomIn')?.addEventListener('click', () => {
             this.minimapZoom = Math.min(this.minimapZoomMax, this.minimapZoom * 1.2);
             this.dirtyDynamic = true;
             this.needsRender = true;
         });
-
         document.getElementById('minimapZoomOut')?.addEventListener('click', () => {
             this.minimapZoom = Math.max(this.minimapZoomMin, this.minimapZoom / 1.2);
             this.dirtyDynamic = true;
             this.needsRender = true;
         });
-
         document.getElementById('minimapReset')?.addEventListener('click', () => {
             this.minimapZoom = 1.0;
             this.minimapPanX = 0;
@@ -825,7 +803,6 @@ class RustPlusWebUI {
             this.dirtyDynamic = true;
             this.needsRender = true;
         });
-
         document.getElementById('hideMainMap')?.addEventListener('change', (e) => {
             const mapContainer = document.querySelector('.map-container');
             if (mapContainer) mapContainer.style.display = e.target.checked ? 'none' : 'flex';
@@ -1413,14 +1390,12 @@ class RustPlusWebUI {
                 const deaths = await response.json();
                 const now = Date.now();
                 const fiveMinutesMs = 5 * 60 * 1000;
-
                 // Add fetchedAt timestamp and calculate expiry
                 this.deathMarkersData = deaths.map(death => ({
                     ...death,
                     fetchedAt: now,
                     expiresAt: now + fiveMinutesMs
                 }));
-
                 console.log(`[WebUI] Loaded ${this.deathMarkersData.length} death markers (last ${hoursAgo}h, 5min expiry)`);
                 this.dirtyDynamic = true;
                 this.needsRender = true;
@@ -1433,7 +1408,6 @@ class RustPlusWebUI {
             this.deathMarkersData = [];
         }
     }
-
     addPersistentPatrolMarker(type, x, y, location, timestamp = null) {
         const now = timestamp || Date.now();
         const marker = {
@@ -1463,7 +1437,6 @@ class RustPlusWebUI {
         this.dirtyDynamic = true;
         this.needsRender = true;
     }
-
     cleanExpiredPatrolMarkers() {
         const now = Date.now();
         const before = this.persistentPatrolMarkers.length;
@@ -1474,7 +1447,6 @@ class RustPlusWebUI {
             this.needsRender = true;
         }
     }
-
     savePersistentMarkers() {
         if (!this.currentGuildId) return;
         try {
@@ -1483,7 +1455,6 @@ class RustPlusWebUI {
             console.error('[WebUI] Failed to save persistent markers:', e);
         }
     }
-
     loadPersistentMarkers() {
         if (!this.currentGuildId) return;
         try {
@@ -1746,7 +1717,6 @@ class RustPlusWebUI {
             teamList.innerHTML = '<p class="loading">No team members</p>';
             return;
         }
-
         const followSelect = document.getElementById('followPlayer');
         if (followSelect) {
             const currentVal = followSelect.value;
@@ -1755,7 +1725,6 @@ class RustPlusWebUI {
                 followSelect.add(new Option(p.name, p.steamId, false, p.steamId === currentVal));
             });
         }
-
         teamList.innerHTML = '';
         team.players.forEach(p => {
             const div = document.createElement('div');
@@ -1829,18 +1798,15 @@ class RustPlusWebUI {
     startRenderLoop() {
         const render = (timestamp) => {
             const elapsed = timestamp - this.lastRenderTime;
-
             // Only render at most 60fps
             if (elapsed < 16 && !this.dirtyStatic && !this.dirtyDynamic) {
                 requestAnimationFrame(render);
                 return;
             }
-
             if (this.dirtyStatic) {
                 this.drawStaticLayers();
                 this.dirtyStatic = false;
             }
-
             if (this.needsRender || this.dirtyDynamic) {
                 this.applyTransform();
                 this.drawDynamicLayers();
@@ -1849,12 +1815,10 @@ class RustPlusWebUI {
                 this.dirtyDynamic = false;
                 this.lastRenderTime = timestamp;
             }
-
             requestAnimationFrame(render);
         };
         requestAnimationFrame(render);
     }
-
     applyTransform() {
         // Don't use CSS transforms - they pixelate everything
         // Instead we'll use canvas context transforms when drawing
@@ -1862,7 +1826,6 @@ class RustPlusWebUI {
         canvases.forEach(c => {
             if (c) c.style.transform = 'none';
         });
-
         // Mark layers as dirty to redraw at proper scale
         this.dirtyStatic = true;
         this.dirtyDynamic = true;
@@ -1881,7 +1844,6 @@ class RustPlusWebUI {
         this.backgroundCtx.translate(this.backgroundCanvas.width / 2, this.backgroundCanvas.height / 2);
         this.backgroundCtx.scale(this.scale, this.scale);
         this.backgroundCtx.translate(this.offsetX - this.mapImage.width / 2, this.offsetY - this.mapImage.height / 2);
-
         // Use high quality image rendering
         this.backgroundCtx.imageSmoothingEnabled = true;
         this.backgroundCtx.imageSmoothingQuality = 'high';
@@ -1895,7 +1857,6 @@ class RustPlusWebUI {
         this.staticCtx.translate(this.staticCanvas.width / 2, this.staticCanvas.height / 2);
         this.staticCtx.scale(this.scale, this.scale);
         this.staticCtx.translate(this.offsetX - this.mapImage.width / 2, this.offsetY - this.mapImage.height / 2);
-
         if (this.serverData) {
             if (this.controls.showGrid) this.drawGrid(this.staticCtx);
             if (this.controls.showMonuments) this.drawMonuments(this.staticCtx);
@@ -1918,7 +1879,6 @@ class RustPlusWebUI {
         ctx.translate(this.dynamicCanvas.width / 2, this.dynamicCanvas.height / 2);
         ctx.scale(this.scale, this.scale);
         ctx.translate(this.offsetX - this.mapImage.width / 2, this.offsetY - this.mapImage.height / 2);
-
         // Check if replay mode should handle rendering
         if (this.mapReplay?.isReplayMode && this.serverData.map) {
             const rendered = this.mapReplay.render(ctx, this.serverData.map);
@@ -1927,7 +1887,6 @@ class RustPlusWebUI {
                 return; // Replay handled all rendering
             }
         }
-
         // Normal rendering
         if (this.controls.showRadZones && this.serverData.mapMarkers?.genericRadiuses) this.drawRadZones(ctx);
         if (this.controls.showEvents) this.drawEvents(ctx);
@@ -1938,7 +1897,6 @@ class RustPlusWebUI {
         // Draw historical death markers (only when enabled)
         if (this.controls.showDeathMarkers && !this.mapReplay?.isReplayMode) this.drawDeathMarkers(ctx);
         if (this.controls.showMarkers && this.serverData.markers) this.drawCustomMarkers(ctx);
-
         // Render live trails with colors
         if (this.controls.showTrails && !this.mapReplay?.isReplayMode) {
             this.drawPlayerTrails(ctx);
@@ -1959,7 +1917,6 @@ class RustPlusWebUI {
 
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
         ctx.lineWidth = 1 / this.scale;
-
         for (let i = 0; i <= numCells; i++) {
             const x = this.worldRect.x + i * cellSize;
             ctx.beginPath();
@@ -1967,7 +1924,6 @@ class RustPlusWebUI {
             ctx.lineTo(x, this.worldRect.y + this.worldRect.height);
             ctx.stroke();
         }
-
         for (let i = 0; i <= numCells; i++) {
             const y = this.worldRect.y + i * cellSize;
             ctx.beginPath();
@@ -2033,7 +1989,6 @@ class RustPlusWebUI {
                 // Extract filename from path
                 const parts = token.split('/');
                 const filename = parts[parts.length - 1].replace('.prefab', '');
-
                 // Map common prefab patterns
                 if (token.includes('underwater')) {
                     token = 'underwater_lab';
@@ -2058,14 +2013,12 @@ class RustPlusWebUI {
             ctx.arc(x, y, size, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
-
             if (this.scale > 0.5) {
                 // Draw emoji
                 ctx.font = `${16 / this.scale}px Arial`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText(monumentInfo.emoji, x, y);
-
                 // Draw name with outline for better readability
                 if (this.scale > 0.8) {
                     ctx.font = `bold ${11 / this.scale}px Arial`;
@@ -2073,13 +2026,11 @@ class RustPlusWebUI {
                     ctx.lineWidth = 3 / this.scale;
                     ctx.lineJoin = 'round';
                     ctx.strokeText(monumentInfo.name, x, y - size - 8 / this.scale);
-
                     ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
                     ctx.fillText(monumentInfo.name, x, y - size - 8 / this.scale);
                 }
             }
         });
-
         // Draw death markers if in replay mode
         if (this.mapReplay?.isReplayMode) {
             const deathMarkers = this.mapReplay.getMinimapDeathMarkers();
@@ -2089,7 +2040,6 @@ class RustPlusWebUI {
                     const normalizedY = 1 - (death.y / mapData.height);
                     const minimapX = centerX + (normalizedX - 0.5) * (mapData.width * this.minimapZoom) + panOffsetX;
                     const minimapY = centerY + (normalizedY - 0.5) * (mapData.height * this.minimapZoom) + panOffsetY;
-
                     // Draw death skull
                     this.minimapCtx.fillStyle = '#ff0000';
                     this.minimapCtx.strokeStyle = '#fff';
@@ -2099,7 +2049,6 @@ class RustPlusWebUI {
                     this.minimapCtx.textBaseline = 'middle';
                     this.minimapCtx.strokeText('💀', minimapX, minimapY);
                     this.minimapCtx.fillText('💀', minimapX, minimapY);
-
                     // Draw player name
                     this.minimapCtx.font = 'bold 8px Arial';
                     this.minimapCtx.fillStyle = '#fff';
@@ -2190,7 +2139,6 @@ class RustPlusWebUI {
             ctx.arc(x, y, size, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
-
             // Draw skull emoji
             ctx.font = `bold ${16 / this.scale}px Arial`;
             ctx.textAlign = 'center';
@@ -2200,7 +2148,6 @@ class RustPlusWebUI {
             ctx.lineWidth = 2 / this.scale;
             ctx.strokeText('💀', x, y);
             ctx.fillText('💀', x, y);
-
             // Draw player name if zoomed in enough
             if (this.scale > 0.5 && death.player_name) {
                 ctx.font = `bold ${10 / this.scale}px Arial`;
@@ -2209,7 +2156,6 @@ class RustPlusWebUI {
                 ctx.strokeText(death.player_name, x, y + size + 10 / this.scale);
                 ctx.fillStyle = '#ffffff';
                 ctx.fillText(death.player_name, x, y + size + 10 / this.scale);
-
                 // Draw time since death
                 const deathTime = death.death_time || death.timestamp || 0;
                 const timeSince = Math.floor((Date.now() / 1000 - deathTime) / 60);
@@ -2244,7 +2190,6 @@ class RustPlusWebUI {
             ctx.arc(x, y, size, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
-
             // Draw skull emoji
             ctx.font = `bold ${16 / this.scale}px Arial`;
             ctx.textAlign = 'center';
@@ -2254,7 +2199,6 @@ class RustPlusWebUI {
             ctx.lineWidth = 2 / this.scale;
             ctx.strokeText('💀', x, y);
             ctx.fillText('💀', x, y);
-
             // Draw player name
             if (this.scale > 0.5) {
                 ctx.font = `bold ${10 / this.scale}px Arial`;
@@ -2263,7 +2207,6 @@ class RustPlusWebUI {
                 ctx.strokeText(death.player_name, x, y + size + 10 / this.scale);
                 ctx.fillStyle = '#ffffff';
                 ctx.fillText(death.player_name, x, y + size + 10 / this.scale);
-
                 // Draw time remaining
                 const timeRemaining = Math.ceil((death.expiresAt - now) / 1000 / 60);
                 const timeText = `${timeRemaining}m`;
@@ -2294,7 +2237,6 @@ class RustPlusWebUI {
             const pulsePhase = (now % 2000) / 2000;
             const pulseSize = size * (1 + 0.4 * Math.sin(pulsePhase * Math.PI * 2));
             const opacity = 0.5 + 0.3 * Math.sin(pulsePhase * Math.PI * 2);
-
             ctx.fillStyle = `rgba(255, 69, 0, ${opacity})`;
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
             ctx.lineWidth = 3 / this.scale;
@@ -2302,7 +2244,6 @@ class RustPlusWebUI {
             ctx.arc(x, y, pulseSize, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
-
             // Draw explosion emoji
             ctx.font = `bold ${32 / this.scale}px Arial`;
             ctx.textAlign = 'center';
@@ -2312,19 +2253,16 @@ class RustPlusWebUI {
             ctx.lineWidth = 2 / this.scale;
             ctx.strokeText('💥', x, y);
             ctx.fillText('💥', x, y);
-
             // Draw label
             if (this.scale > 0.5) {
                 const timeLeft = Math.ceil((marker.expiresAt - now) / 60000);
                 const timeText = timeLeft > 1 ? `${timeLeft}m` : '<1m';
-
                 ctx.font = `bold ${14 / this.scale}px Arial`;
                 ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)';
                 ctx.lineWidth = 3 / this.scale;
                 ctx.strokeText(`Patrol Down - ${marker.location}`, x, y + size + 12 / this.scale);
                 ctx.fillStyle = '#ffffff';
                 ctx.fillText(`Patrol Down - ${marker.location}`, x, y + size + 12 / this.scale);
-
                 ctx.font = `bold ${12 / this.scale}px Arial`;
                 ctx.fillStyle = '#ff4500';
                 ctx.strokeText(`⏱️ ${timeText}`, x, y + size + 26 / this.scale);
@@ -2378,7 +2316,6 @@ class RustPlusWebUI {
                 ctx.lineCap = 'round';
                 ctx.lineJoin = 'round';
                 ctx.globalAlpha = 0.6;
-
                 ctx.beginPath();
                 ctx.moveTo(trails[0].x, trails[0].y);
                 for (let i = 1; i < trails.length; i++) {
@@ -2427,7 +2364,6 @@ class RustPlusWebUI {
                 ctx.fill();
                 ctx.stroke();
             }
-
             if (this.controls.showPlayerNames && this.scale > 0.7) {
                 ctx.fillStyle = 'white';
                 ctx.strokeStyle = 'black';
@@ -2546,7 +2482,6 @@ class RustPlusWebUI {
                     ctx.fill();
                     ctx.stroke();
                 }
-
                 if (this.showMinimapPlayerNames && this.minimapZoom > 0.8) {
                     ctx.fillStyle = 'white';
                     ctx.font = `bold ${isCenter ? 12 : 10}px Arial`;
@@ -2583,7 +2518,6 @@ class RustPlusWebUI {
                     ctx.arc(dmx, dmy, 10, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.stroke();
-
                     // Draw death skull (brighter red for recent deaths)
                     ctx.fillStyle = '#ff0000';
                     ctx.strokeStyle = '#fff';
@@ -2621,7 +2555,6 @@ class RustPlusWebUI {
                     ctx.arc(dmx, dmy, 9, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.stroke();
-
                     // Draw death skull (slightly transparent for historical deaths)
                     ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
                     ctx.strokeStyle = '#fff';
@@ -2674,7 +2607,6 @@ class RustPlusWebUI {
         if (info.queuedPlayers > 0) text += ` (${info.queuedPlayers})`;
         ctx.fillText(text, x, y);
         x += ctx.measureText(text).width;
-
         // Time
         const gameTime = this.formatGameTime(time.time);
         const timeIcon = time.isDay ? '☀️' : '🌙';
@@ -2685,7 +2617,6 @@ class RustPlusWebUI {
         text = `${timeIcon} ${gameTime}`;
         ctx.fillText(text, x, y);
         x += ctx.measureText(text).width;
-
         // Events
         if (markers?.patrolHelicopters?.length > 0) {
             markers.patrolHelicopters.forEach(heli => {
@@ -2699,7 +2630,6 @@ class RustPlusWebUI {
                 x += ctx.measureText(text).width;
             });
         }
-
         if (markers?.cargoShips?.length > 0) {
             markers.cargoShips.forEach(cargo => {
                 const grid = this.worldToGrid(cargo.x, cargo.y);
@@ -2712,7 +2642,6 @@ class RustPlusWebUI {
                 x += ctx.measureText(text).width;
             });
         }
-
         if (markers?.ch47s?.length > 0) {
             markers.ch47s.forEach(ch47 => {
                 const grid = this.worldToGrid(ch47.x, ch47.y);
@@ -2725,7 +2654,6 @@ class RustPlusWebUI {
                 x += ctx.measureText(text).width;
             });
         }
-
         const patrolDeath = this.persistentPatrolMarkers?.find(m => m.type === 'heli' && m.expiresAt > Date.now());
         if (patrolDeath) {
             const timeLeft = Math.ceil((patrolDeath.expiresAt - Date.now()) / 60000);
@@ -2843,12 +2771,10 @@ class RustPlusWebUI {
             this.dirtyDynamic = true;
             this.needsRender = true;
         };
-
         img.onerror = () => {
             // If proxy fails, just use default circle (no fallback to prevent 404s)
             this.playerAvatars[steamId] = null;
         };
-
         // Use our server proxy - it handles the Steam CDN redirect properly
         img.src = `/api/avatar/${steamId}`;
     }
@@ -2896,7 +2822,6 @@ class RustPlusWebUI {
     }
 
     // ==================== MAP REPLAY ====================
-
     setReplayMode(enabled, replayData = null) {
         if (enabled && replayData) {
             this.mapReplay.setReplayData(replayData);
@@ -2919,7 +2844,6 @@ class RustPlusWebUI {
     }
 
     // ==================== HELPER METHODS ====================
-
     gameToCanvasX(x, worldWidth, oceanMargin) {
         if (!this.mapImage) return 0;
         // Convert game coordinates (0 to worldWidth) to normalized map coordinates (0 to 1)

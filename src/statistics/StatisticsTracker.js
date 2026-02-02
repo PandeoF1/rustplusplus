@@ -30,7 +30,6 @@ class StatisticsTracker {
         this.reconnectPending = {};
         this.reconnectMode = {};
         this.sessionReconnectGraceSeconds = 60 * 60; // 1 hour
-
         this.client.log(this.client.intlGet(null, 'infoCap'), 'Statistics: tracker initialized');
         this.setupEventHandlers();
     }
@@ -53,7 +52,6 @@ class StatisticsTracker {
                 this.stopTracking(guildId);
                 continue;
             }
-
             if (!this.trackingIntervals[guildId]) {
                 this.startTracking(guildId);
             }
@@ -82,7 +80,6 @@ class StatisticsTracker {
         this.trackingIntervals[guildId] = setInterval(() => {
             this.trackGuildData(guildId);
         }, 30000);
-
         // Initial track
         this.trackGuildData(guildId);
     }
@@ -141,17 +138,14 @@ class StatisticsTracker {
                             this.handlePlayerConnect(guildId, serverId, player);
                         }
                     }
-
                     // Check if player went offline
                     if (!player.isOnline && lastState && lastState.isOnline) {
                         this.handlePlayerDisconnect(guildId, player);
                     }
-
                     // Check if player died (went from alive to dead while online)
                     if (player.isOnline && !player.isAlive && lastState && lastState.isAlive) {
                         this.handlePlayerDeath(guildId, serverId, player, lastState);
                     }
-
                     // Track position if online
                     if (player.isOnline && player.x !== undefined && player.y !== undefined) {
                         this.db.recordPlayerPosition(
@@ -164,7 +158,6 @@ class StatisticsTracker {
                         );
                     }
                 });
-
                 // Check for players who left the team
                 if (this.lastKnownPlayerStates[guildId]) {
                     Object.keys(this.lastKnownPlayerStates[guildId]).forEach(steamId => {
@@ -190,7 +183,6 @@ class StatisticsTracker {
 
     handlePlayerConnect(guildId, serverId, player) {
         this.client.log(this.client.intlGet(null, 'infoCap'), `Statistics: player connected: ${player.name} (${player.steamId})`);
-
         // Check if there's already an active session (shouldn't happen, but handle it)
         const activeSession = this.db.getActiveSession(guildId, player.steamId);
         if (activeSession) {
@@ -199,7 +191,6 @@ class StatisticsTracker {
             }
             this.db.endPlayerSession(guildId, player.steamId);
         }
-
         // Start new session
         this.db.startPlayerSession(guildId, serverId, player.steamId, player.name);
     }
@@ -330,7 +321,6 @@ class StatisticsTracker {
     trackCommand(guildId, serverId, command, steamId = null, playerName = null) {
         this.db.recordCommand(guildId, serverId, command, steamId, playerName);
     }
-
     trackPlayerDeath(guildId, serverId, steamId, playerName, x = null, y = null) {
         this.client.log(this.client.intlGet(null, 'infoCap'), `Statistics: recording death: ${playerName} at (${x}, ${y})`);
         this.db.recordPlayerDeath(guildId, serverId, steamId, playerName, x, y);
@@ -477,14 +467,12 @@ class StatisticsTracker {
         }
         return await bcrypt.compare(pin, pinHash);
     }
-
     async setPinCode(guildId, pin) {
         this.client.log(this.client.intlGet(null, 'infoCap'), `Statistics: setting PIN code for guild ${guildId}`);
         const saltRounds = 10;
         const pinHash = await bcrypt.hash(pin, saltRounds);
         return this.db.setPinCode(guildId, pinHash);
     }
-
     removePinCode(guildId) {
         this.client.log(this.client.intlGet(null, 'infoCap'), `Statistics: removing PIN code for guild ${guildId}`);
         return this.db.removePinCode(guildId);
@@ -492,12 +480,10 @@ class StatisticsTracker {
 
     shutdown() {
         this.client.log(this.client.intlGet(null, 'infoCap'), 'Statistics: shutting down statistics tracker...');
-
         // Stop all tracking
         Object.keys(this.trackingIntervals).forEach(guildId => {
             this.stopTracking(guildId);
         });
-
         // Close database
         this.db.close();
         this.client.log(this.client.intlGet(null, 'infoCap'), 'Statistics: statistics tracker shut down');

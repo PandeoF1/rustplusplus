@@ -136,7 +136,6 @@ function setupStatisticsRoutes(app, statisticsTracker) {
             if (steamIds && steamIds.length > 0) {
                 deaths = deaths.filter(d => steamIds.includes(d.steam_id));
             }
-
             // Filter by time range if provided
             if (startTime) {
                 deaths = deaths.filter(d => d.death_time >= startTime);
@@ -144,7 +143,6 @@ function setupStatisticsRoutes(app, statisticsTracker) {
             if (endTime) {
                 deaths = deaths.filter(d => d.death_time <= endTime);
             }
-
             res.json(deaths);
         } catch (error) {
             res.status(500).json({ error: error.message });
@@ -212,7 +210,6 @@ function setupStatisticsRoutes(app, statisticsTracker) {
                     isAlive: pos.is_alive === 1
                 });
             });
-
             res.json(playerData);
         } catch (error) {
             res.status(500).json({ error: error.message });
@@ -257,7 +254,6 @@ function setupStatisticsRoutes(app, statisticsTracker) {
     });
 
     /* PIN CODE ENDPOINTS */
-
     /* Check if PIN is set for a guild */
     router.get('/pin-status/:guildId', (req, res) => {
         try {
@@ -268,7 +264,6 @@ function setupStatisticsRoutes(app, statisticsTracker) {
             res.status(500).json({ error: error.message });
         }
     });
-
     /* Verify PIN code */
     router.post('/verify-pin/:guildId', async (req, res) => {
         try {
@@ -289,7 +284,6 @@ function setupStatisticsRoutes(app, statisticsTracker) {
             res.status(500).json({ error: error.message });
         }
     });
-
     /* Set PIN code (first time) */
     router.post('/set-pin/:guildId', async (req, res) => {
         try {
@@ -306,7 +300,6 @@ function setupStatisticsRoutes(app, statisticsTracker) {
             res.status(500).json({ success: false, error: error.message });
         }
     });
-
     /* Update or remove PIN code */
     router.post('/update-pin/:guildId', async (req, res) => {
         try {
@@ -322,7 +315,6 @@ function setupStatisticsRoutes(app, statisticsTracker) {
             if (!isValid) {
                 return res.json({ success: false, error: 'Incorrect current PIN' });
             }
-
             // Update or remove PIN
             if (newPin) {
                 if (newPin.length < 4) {
@@ -332,7 +324,6 @@ function setupStatisticsRoutes(app, statisticsTracker) {
             } else {
                 statisticsTracker.removePinCode(guildId);
             }
-
             res.json({ success: true });
         } catch (error) {
             res.status(500).json({ success: false, error: error.message });

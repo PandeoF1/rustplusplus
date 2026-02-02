@@ -31,7 +31,6 @@ class StatisticsDatabase {
             }
             dbPath = Path.join(dbDir, 'statistics.db');
         }
-
         this.db = new Database(dbPath);
         this.db.pragma('journal_mode = WAL'); // Better concurrent access
         this.initializeTables();
@@ -189,7 +188,6 @@ class StatisticsDatabase {
             LIMIT 1
         `);
         const recentSession = recentStmt.get(guildId, steamId);
-
         // If found a session that ended within merge gap, resume it instead of creating new
         if (recentSession && (timestamp - recentSession.session_end) <= mergeGapSeconds) {
             const resumeStmt = this.db.prepare(`
@@ -199,7 +197,6 @@ class StatisticsDatabase {
             `);
             return resumeStmt.run(recentSession.id);
         }
-
         // Otherwise create new session
         const stmt = this.db.prepare(`
             INSERT INTO player_sessions (guild_id, server_id, steam_id, player_name, session_start)
@@ -330,7 +327,6 @@ class StatisticsDatabase {
                         INSERT INTO player_sessions (guild_id, server_id, steam_id, player_name, session_start, session_end, is_active, duration_seconds)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     `);
-
                     merged.forEach(m => {
                         const duration = m.is_active ? null : ((m.session_end || now) - m.session_start);
                         insertStmt.run(
@@ -345,7 +341,6 @@ class StatisticsDatabase {
                         );
                     });
                 });
-
                 transaction();
                 totalMerged += (sessions.length - merged.length);
             }
@@ -393,7 +388,6 @@ class StatisticsDatabase {
     }
 
     // ==================== PLAYER POSITIONS ====================
-
     recordPlayerPosition(guildId, serverId, steamId, x, y, isAlive = true) {
         const stmt = this.db.prepare(`
             INSERT INTO player_positions (guild_id, server_id, steam_id, x, y, timestamp, is_alive)
@@ -845,14 +839,12 @@ class StatisticsDatabase {
         this.limitTableSize('player_positions', maxRecords);
         this.limitTableSize('chat_history', 500000);
         this.limitTableSize('connection_stats', 200000);
-
         // Log maintenance
         if (totalDeleted > 0) {
             this.db.prepare(`
                 INSERT INTO maintenance_log (maintenance_type, records_deleted, timestamp)
                 VALUES (?, ?, ?)
             `).run('scheduled_cleanup', totalDeleted, now);
-
             console.log(`[Statistics] Maintenance completed: ${totalDeleted} records cleaned`);
         }
 
@@ -862,7 +854,6 @@ class StatisticsDatabase {
 
     limitTableSize(tableName, maxRecords) {
         const count = this.db.prepare(`SELECT COUNT(*) as count FROM ${tableName}`).get().count;
-
         if (count > maxRecords) {
             const toDelete = count - maxRecords;
             this.db.prepare(`
@@ -873,7 +864,6 @@ class StatisticsDatabase {
                     LIMIT ?
                 )
             `).run(toDelete);
-
             console.log(`[Statistics] Trimmed ${toDelete} old records from ${tableName}`);
         }
     }
@@ -926,13 +916,11 @@ class StatisticsDatabase {
             'command_history',
             'connection_stats'
         ];
-
         let totalDeleted = 0;
         tables.forEach(table => {
             const result = this.db.prepare(`DELETE FROM ${table} WHERE guild_id = ?`).run(guildId);
             totalDeleted += result.changes;
         });
-
         // Log the reset
         const now = Math.floor(Date.now() / 1000);
         this.db.prepare(`
@@ -946,7 +934,6 @@ class StatisticsDatabase {
     }
 
     // ==================== PIN CODE MANAGEMENT ====================
-
     hasPinCode(guildId) {
         const stmt = this.db.prepare(`
             SELECT guild_id FROM pin_codes WHERE guild_id = ?
@@ -954,7 +941,6 @@ class StatisticsDatabase {
         const result = stmt.get(guildId);
         return !!result;
     }
-
     getPinHash(guildId) {
         const stmt = this.db.prepare(`
             SELECT pin_hash FROM pin_codes WHERE guild_id = ?
@@ -962,7 +948,6 @@ class StatisticsDatabase {
         const result = stmt.get(guildId);
         return result ? result.pin_hash : null;
     }
-
     setPinCode(guildId, pinHash) {
         const now = Math.floor(Date.now() / 1000);
         const stmt = this.db.prepare(`
@@ -971,7 +956,6 @@ class StatisticsDatabase {
         `);
         stmt.run(guildId, pinHash, guildId, now, now);
     }
-
     removePinCode(guildId) {
         const stmt = this.db.prepare(`
             DELETE FROM pin_codes WHERE guild_id = ?

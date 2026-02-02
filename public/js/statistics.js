@@ -142,14 +142,12 @@ class StatisticsManager {
                 break;
         }
     }
-
     async openPinCodeManager() {
         // Check current PIN status from auth manager or API
         let hasPinCode = false;
         if (this.authManager) {
             hasPinCode = this.authManager.hasPinCode;
         }
-
         // If not set in auth manager, check from API
         if (hasPinCode === null || hasPinCode === undefined) {
             try {
@@ -163,7 +161,6 @@ class StatisticsManager {
                 hasPinCode = false;
             }
         }
-
         if (!hasPinCode) {
             // No pin code set, show setup form
             this.showPinSetupForm();
@@ -172,7 +169,6 @@ class StatisticsManager {
             this.showPinManagementForm();
         }
     }
-
     showPinSetupForm() {
         const body = document.getElementById('statisticsBody');
         body.innerHTML = `
@@ -199,7 +195,6 @@ class StatisticsManager {
             </div>
         `;
     }
-
     showPinManagementForm() {
         const body = document.getElementById('statisticsBody');
         body.innerHTML = `
@@ -234,17 +229,14 @@ class StatisticsManager {
             </div>
         `;
     }
-
     async saveNewPin() {
         const newPin = document.getElementById('newPin')?.value || '';
         const confirmPin = document.getElementById('confirmPin')?.value || '';
         const errorDiv = document.getElementById('pinSetupError');
-
         if (!newPin || newPin.length < 4) {
             errorDiv.textContent = 'PIN must be at least 4 characters';
             return;
         }
-
         if (newPin !== confirmPin) {
             errorDiv.textContent = 'PIN codes do not match';
             return;
@@ -275,23 +267,19 @@ class StatisticsManager {
             }
         }
     }
-
     async updatePin() {
         const currentPin = document.getElementById('currentPin')?.value || '';
         const newPin = document.getElementById('newPin')?.value || '';
         const confirmPin = document.getElementById('confirmPin')?.value || '';
         const errorDiv = document.getElementById('pinManageError');
-
         if (!currentPin) {
             errorDiv.textContent = 'Please enter current PIN';
             return;
         }
-
         if (newPin && newPin.length < 4) {
             errorDiv.textContent = 'New PIN must be at least 4 characters';
             return;
         }
-
         if (newPin !== confirmPin) {
             errorDiv.textContent = 'New PIN codes do not match';
             return;
@@ -495,7 +483,6 @@ class StatisticsManager {
             console.error('Error updating population timeline:', error);
         }
     }
-
     getPlayerName(steamId) {
         const teamData = window.rustplusUI?.serverData?.team;
         if (!teamData) return 'Unknown';
@@ -590,7 +577,6 @@ class StatisticsManager {
                 const endTime = session.session_end || now;
                 return Math.max(0, endTime - session.session_start);
             };
-
             // Calculate enhanced statistics (including active sessions)
             const totalPlaytime = data.sessions.reduce((sum, s) => sum + getSessionDuration(s), 0);
             const avgSessionLength = data.sessions.length > 0 ? totalPlaytime / data.sessions.length : 0;
@@ -598,7 +584,6 @@ class StatisticsManager {
             const activeSessions = data.sessions.filter(s => s.is_active).length;
             const deathCount = data.deaths.length;
             const deathsPerHour = totalPlaytime > 0 ? (deathCount / (totalPlaytime / 3600)).toFixed(2) : 0;
-
             // Calculate play patterns (hours of day) - including active sessions
             const playByHour = new Array(24).fill(0);
             const playByDayOfWeek = new Array(7).fill(0);
@@ -716,7 +701,6 @@ class StatisticsManager {
                     </div>
                 </div>
             `;
-
             // Render charts with proper sizing
             requestAnimationFrame(() => {
                 this.renderPlayerSessionChart(data.sessions, data.color);
@@ -761,7 +745,6 @@ class StatisticsManager {
                 <canvas id="allSessionsChart"></canvas>
             </div>
         `;
-
         await this.updateSessionTimeline();
     }
 
@@ -818,13 +801,11 @@ class StatisticsManager {
                 }
                 deaths[steamId].push(death);
             });
-
             // Calculate statistics
             const totalDeaths = deathsArray.length;
             const playerDeathCounts = {};
             const deathsByHour = new Array(24).fill(0);
             const recentDeaths = [];
-
             Object.entries(deaths).forEach(([steamId, playerDeaths]) => {
                 playerDeathCounts[steamId] = playerDeaths.length;
                 playerDeaths.forEach(death => {
@@ -848,12 +829,10 @@ class StatisticsManager {
                 const player = teamData.players.find(p => p.steamId === steamId);
                 return player ? player.name : 'Unknown';
             };
-
             // Top death leaders
             const topDeaths = Object.entries(playerDeathCounts)
                 .sort((a, b) => b[1] - a[1])
                 .slice(0, 5);
-
             content.innerHTML = `
                 <div class="stats-grid">
                     <div class="stat-card">
@@ -950,7 +929,6 @@ class StatisticsManager {
             y: count,
             label: `${hour}:00`
         }));
-
         const padding = { left: 50, right: 20, top: 30, bottom: 40 };
         const chartWidth = canvas.width - padding.left - padding.right;
         const chartHeight = canvas.height - padding.top - padding.bottom;
@@ -964,20 +942,17 @@ class StatisticsManager {
         ctx.font = 'bold 14px Arial';
         ctx.textAlign = 'center';
         ctx.fillText('Deaths Distribution by Hour', canvas.width / 2, 20);
-
         // Draw bars
         data.forEach((point, i) => {
             const x = padding.left + (chartWidth / 24) * i + (chartWidth / 24 - barWidth) / 2;
             const barHeight = (point.y / maxY) * chartHeight;
             const y = padding.top + chartHeight - barHeight;
-
             // Gradient fill
             const gradient = ctx.createLinearGradient(x, y, x, y + barHeight);
             gradient.addColorStop(0, '#ff5722');
             gradient.addColorStop(1, '#ff5722aa');
             ctx.fillStyle = gradient;
             ctx.fillRect(x, y, barWidth, barHeight);
-
             // Hour label (every 3 hours)
             if (i % 3 === 0) {
                 ctx.fillStyle = '#888';
@@ -986,7 +961,6 @@ class StatisticsManager {
                 ctx.fillText(i.toString(), x + barWidth / 2, canvas.height - 5);
             }
         });
-
         // Draw axes
         ctx.strokeStyle = '#444';
         ctx.lineWidth = 2;
@@ -995,7 +969,6 @@ class StatisticsManager {
         ctx.lineTo(padding.left, padding.top + chartHeight);
         ctx.lineTo(padding.left + chartWidth, padding.top + chartHeight);
         ctx.stroke();
-
         // Y-axis labels
         ctx.fillStyle = '#888';
         ctx.font = '11px Arial';
@@ -1005,13 +978,11 @@ class StatisticsManager {
             const value = Math.floor((maxY / 5) * i);
             ctx.fillText(value.toString(), padding.left - 5, y + 4);
         }
-
         // Axis labels
         ctx.fillStyle = '#aaa';
         ctx.font = '12px Arial';
         ctx.textAlign = 'center';
         ctx.fillText('Hour of Day', canvas.width / 2, canvas.height - 5);
-
         ctx.save();
         ctx.translate(15, canvas.height / 2);
         ctx.rotate(-Math.PI / 2);
@@ -1269,7 +1240,6 @@ class StatisticsManager {
                     if (panel) panel.style.display = 'none';
                 }, 1000);
             }
-
             btn.disabled = false;
         } catch (error) {
             status.innerHTML = `<div class="error">Error loading replay: ${error.message}</div>`;
@@ -1337,7 +1307,6 @@ Database: ${info.size.megabytes} MB |
             ctx.moveTo(padding.left, y);
             ctx.lineTo(padding.left + chartWidth, y);
             ctx.stroke();
-
             // Y-axis labels
             const value = Math.floor(maxValue * (1 - i / gridLines));
             ctx.fillStyle = '#888';
@@ -1345,7 +1314,6 @@ Database: ${info.size.megabytes} MB |
             ctx.textAlign = 'right';
             ctx.fillText(value.toString(), padding.left - 10, y + 4);
         }
-
         // Draw time labels (sample every N points for readability)
         const timeLabels = 6;
         const step = Math.floor(data.length / timeLabels);
@@ -1357,14 +1325,12 @@ Database: ${info.size.megabytes} MB |
             const timeStr = `${date.getMonth() + 1}/${date.getDate()} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
             ctx.fillText(timeStr, x, canvas.height - padding.bottom + 20);
         }
-
         // Function to draw line chart
         const drawLine = (dataKey, color, fillAlpha = 0.2) => {
             const points = data.map((point, i) => ({
                 x: padding.left + (chartWidth / (data.length - 1)) * i,
                 y: padding.top + chartHeight - ((point[dataKey] || 0) / maxValue) * chartHeight
             }));
-
             // Draw filled area
             ctx.fillStyle = color + Math.floor(fillAlpha * 255).toString(16).padStart(2, '0');
             ctx.beginPath();
@@ -1373,7 +1339,6 @@ Database: ${info.size.megabytes} MB |
             ctx.lineTo(points[points.length - 1].x, chartHeight + padding.top);
             ctx.closePath();
             ctx.fill();
-
             // Draw line
             ctx.strokeStyle = color;
             ctx.lineWidth = 2;
@@ -1384,7 +1349,6 @@ Database: ${info.size.megabytes} MB |
             });
             ctx.stroke();
         };
-
         // Draw queue first (background layer)
         if (maxQueue > 0) {
             drawLine('queued_players', '#ff9800', 0.15);
@@ -1397,18 +1361,15 @@ Database: ${info.size.megabytes} MB |
         ctx.strokeStyle = '#555';
         ctx.lineWidth = 2;
         ctx.strokeRect(padding.left, padding.top, chartWidth, chartHeight);
-
         // Draw legend
         const legendY = padding.top - 20;
         ctx.font = 'bold 12px Arial';
         ctx.textAlign = 'left';
-
         // Online players legend
         ctx.fillStyle = '#4caf50';
         ctx.fillRect(padding.left, legendY, 15, 15);
         ctx.fillStyle = '#fff';
         ctx.fillText('Online Players', padding.left + 20, legendY + 12);
-
         // Queue legend
         if (maxQueue > 0) {
             ctx.fillStyle = '#ff9800';
@@ -1416,7 +1377,6 @@ Database: ${info.size.megabytes} MB |
             ctx.fillStyle = '#fff';
             ctx.fillText('Queue', padding.left + 170, legendY + 12);
         }
-
         // Title
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 14px Arial';
@@ -1495,7 +1455,6 @@ Database: ${info.size.megabytes} MB |
             y: hours,
             label: dayNames[index]
         }));
-
         this.renderSimpleBarChart(ctx, canvas, data, color, 'Hours Played by Day of Week');
     }
 
@@ -1514,7 +1473,6 @@ Database: ${info.size.megabytes} MB |
         const padding = 40;
         const width = canvas.width - padding * 2;
         const height = canvas.height - padding * 2;
-
         if (!data || data.length === 0) {
             ctx.fillStyle = '#888';
             ctx.font = '14px Arial';
@@ -1536,7 +1494,6 @@ Database: ${info.size.megabytes} MB |
         ctx.lineTo(padding, height + padding);
         ctx.lineTo(width + padding, height + padding);
         ctx.stroke();
-
         // Draw grid
         ctx.strokeStyle = '#333';
         ctx.lineWidth = 0.5;
@@ -1546,7 +1503,6 @@ Database: ${info.size.megabytes} MB |
             ctx.moveTo(padding, y);
             ctx.lineTo(width + padding, y);
             ctx.stroke();
-
             // Y-axis labels
             const value = maxY - (maxY / 5) * i;
             ctx.fillStyle = '#888';
@@ -1554,17 +1510,14 @@ Database: ${info.size.megabytes} MB |
             ctx.textAlign = 'right';
             ctx.fillText(Math.floor(value).toString(), padding - 5, y + 4);
         }
-
         // Draw line
         ctx.strokeStyle = '#00ff88';
         ctx.fillStyle = 'rgba(0, 255, 136, 0.2)';
         ctx.lineWidth = 2;
-
         ctx.beginPath();
         data.forEach((point, i) => {
             const x = padding + (width / (data.length - 1)) * i;
             const y = padding + height - ((point[yKey] - minY) / (maxY - minY)) * height;
-
             if (i === 0) {
                 ctx.moveTo(x, y);
             } else {
@@ -1572,13 +1525,11 @@ Database: ${info.size.megabytes} MB |
             }
         });
         ctx.stroke();
-
         // Fill area under line
         ctx.lineTo(width + padding, height + padding);
         ctx.lineTo(padding, height + padding);
         ctx.closePath();
         ctx.fill();
-
         // Title
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 12px Arial';
@@ -1610,13 +1561,11 @@ Database: ${info.size.megabytes} MB |
         ctx.font = 'bold 13px Arial';
         ctx.textAlign = 'center';
         ctx.fillText(label, canvas.width / 2, 20);
-
         // Draw bars with gradient
         data.forEach((point, i) => {
             const x = padding.left + (width / data.length) * i + (width / data.length - barWidth) / 2;
             const barHeight = (point.y / maxY) * height;
             const y = padding.top + height - barHeight;
-
             // Gradient fill
             const gradient = ctx.createLinearGradient(x, y, x, y + barHeight);
             const baseColor = color || '#00ff88';
@@ -1626,7 +1575,6 @@ Database: ${info.size.megabytes} MB |
             gradient.addColorStop(1, gradientColor);
             ctx.fillStyle = gradient;
             ctx.fillRect(x, y, barWidth, barHeight);
-
             // Value on top of bar if space permits
             if (barHeight > 20) {
                 ctx.fillStyle = '#fff';
@@ -1636,7 +1584,6 @@ Database: ${info.size.megabytes} MB |
                 ctx.fillText(valueText, x + barWidth / 2, y - 5);
             }
         });
-
         // Draw axes
         ctx.strokeStyle = '#444';
         ctx.lineWidth = 2;
@@ -1645,7 +1592,6 @@ Database: ${info.size.megabytes} MB |
         ctx.lineTo(padding.left, padding.top + height);
         ctx.lineTo(padding.left + width, padding.top + height);
         ctx.stroke();
-
         // Y-axis labels
         ctx.fillStyle = '#888';
         ctx.font = '10px Arial';
@@ -1655,7 +1601,6 @@ Database: ${info.size.megabytes} MB |
             const value = (maxY / 5) * i;
             const valueText = value >= 60 ? `${Math.floor(value / 60)}h` : `${Math.floor(value)}m`;
             ctx.fillText(valueText, padding.left - 5, y + 4);
-
             // Grid line
             if (i > 0) {
                 ctx.strokeStyle = '#333';
@@ -1666,7 +1611,6 @@ Database: ${info.size.megabytes} MB |
                 ctx.stroke();
             }
         }
-
         // X-axis labels (show labels if available)
         if (data[0]?.label) {
             ctx.fillStyle = '#888';
@@ -1705,7 +1649,6 @@ Database: ${info.size.megabytes} MB |
             // For "all time", use a very high limit
             url += `&limit=50000`;
         }
-
         console.log('[Sessions] Fetching from URL:', url);
         try {
             const sessions = await this.apiClient.get(url);
@@ -1748,7 +1691,6 @@ Database: ${info.size.megabytes} MB |
             ctx.fillText('No team data available', canvas.width / 2, canvas.height / 2);
             return;
         }
-
         // Get time range
         const timeRange = document.getElementById('timeRangeSelect')?.value || '168';
         const now = Date.now() / 1000;
@@ -1771,12 +1713,10 @@ Database: ${info.size.megabytes} MB |
         ctx.fillStyle = '#888';
         ctx.font = '11px Arial';
         ctx.textAlign = 'center';
-
         const timeIntervals = timeSpan < 86400 ? 6 : timeSpan < 259200 ? 8 : 10;
         for (let i = 0; i <= timeIntervals; i++) {
             const time = startTime + (timeSpan / timeIntervals) * i;
             const x = padding.left + (chartWidth / timeIntervals) * i;
-
             // Draw grid line
             ctx.beginPath();
             ctx.moveTo(x, padding.top);
@@ -1790,7 +1730,6 @@ Database: ${info.size.megabytes} MB |
                 `${date.getMonth() + 1}/${date.getDate()} ${String(date.getHours()).padStart(2, '0')}:00`;
             ctx.fillText(label, x, canvas.height - 10);
         }
-
         const hasSessions = Object.values(sessionsData || {}).some(sessions => sessions.length > 0);
 
         // Draw each player's timeline
@@ -1817,31 +1756,26 @@ Database: ${info.size.megabytes} MB |
                 ctx.drawImage(img, 5, y + rowHeight / 2 - 15, 30, 30);
                 ctx.restore();
             };
-
             // Draw player name
             ctx.fillStyle = '#fff';
             ctx.font = 'bold 12px Arial';
             ctx.textAlign = 'left';
             ctx.fillText(player.name.substring(0, 15), 45, y + rowHeight / 2 + 4);
-
             // Draw status indicator
             const isOnline = player.isOnline;
             ctx.fillStyle = isOnline ? '#4caf50' : '#666';
             ctx.beginPath();
             ctx.arc(padding.left - 15, y + rowHeight / 2, 5, 0, Math.PI * 2);
             ctx.fill();
-
             // Draw session bars
             ctx.fillStyle = playerColor;
             playerSessions.forEach(session => {
                 const sessionStart = Math.max(session.session_start, startTime);
                 const sessionEnd = session.session_end ? Math.min(session.session_end, endTime) : endTime;
-
                 if (sessionEnd > startTime && sessionStart < endTime) {
                     const startX = padding.left + ((sessionStart - startTime) / timeSpan) * chartWidth;
                     const endX = padding.left + ((sessionEnd - startTime) / timeSpan) * chartWidth;
                     const width = Math.max(endX - startX, 2);
-
                     // Draw session bar with gradient
                     const gradient = ctx.createLinearGradient(startX, y + 8, startX, y + rowHeight - 13);
                     // Convert HSL to HSLA for transparency
@@ -1860,7 +1794,6 @@ Database: ${info.size.megabytes} MB |
                     }
                 }
             });
-
             // Draw horizontal separator
             ctx.strokeStyle = '#333';
             ctx.lineWidth = 1;
@@ -1869,7 +1802,6 @@ Database: ${info.size.megabytes} MB |
             ctx.lineTo(canvas.width, y + rowHeight - 2);
             ctx.stroke();
         });
-
         // Draw border
         ctx.strokeStyle = '#555';
         ctx.lineWidth = 2;
@@ -1881,7 +1813,6 @@ Database: ${info.size.megabytes} MB |
             ctx.textAlign = 'center';
             ctx.fillText('No sessions recorded yet', padding.left + chartWidth / 2, padding.top + chartHeight / 2);
         }
-
         // Draw "now" indicator
         const nowX = padding.left + ((now - startTime) / timeSpan) * chartWidth;
         ctx.strokeStyle = '#ff5722';
@@ -1892,14 +1823,12 @@ Database: ${info.size.megabytes} MB |
         ctx.lineTo(nowX, padding.top + chartHeight);
         ctx.stroke();
         ctx.setLineDash([]);
-
         // "Now" label
         ctx.fillStyle = '#ff5722';
         ctx.font = 'bold 11px Arial';
         ctx.textAlign = 'center';
         ctx.fillText('NOW', nowX, padding.top - 5);
     }
-
     getEarliestSessionTime(sessionsData) {
         let earliest = Date.now() / 1000;
         Object.values(sessionsData).forEach(sessions => {
@@ -1911,7 +1840,6 @@ Database: ${info.size.megabytes} MB |
         });
         return earliest;
     }
-
     getPlayerColorForTimeline(steamId) {
         // Generate consistent color from steam ID
         const colors = window.rustplusUI?.playerColors;
@@ -1930,7 +1858,6 @@ Database: ${info.size.megabytes} MB |
         const hue = Math.abs(hash) % 360;
         return `hsl(${hue}, 70%, 50%)`;
     }
-
     async confirmResetStats() {
         // Check if PIN is required
         if (this.hasPinCode) {
@@ -1971,7 +1898,6 @@ Database: ${info.size.megabytes} MB |
                 </div>
             </div>
         `;
-
         // Focus input and allow Enter key
         setTimeout(() => {
             const input = document.getElementById('resetPinInput');
@@ -1985,12 +1911,10 @@ Database: ${info.size.megabytes} MB |
             }
         }, 100);
     }
-
     async verifyResetPin() {
         const input = document.getElementById('resetPinInput');
         const errorDiv = document.getElementById('resetPinError');
         const pin = input?.value || '';
-
         if (!pin) {
             errorDiv.textContent = 'Please enter PIN code';
             return;
@@ -2012,7 +1936,6 @@ Database: ${info.size.megabytes} MB |
             errorDiv.textContent = '❌ Error verifying PIN';
         }
     }
-
     async performReset() {
         if (!confirm('⚠️ FINAL WARNING\n\nAre you absolutely sure you want to reset ALL statistics?\n\nThis action cannot be undone!')) {
             await this.switchTab(this.currentView);
