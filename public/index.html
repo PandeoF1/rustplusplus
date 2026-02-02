@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rust++ WebUI</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Performance hints for canvas rendering */
+        canvas {
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎮 Rust++ WebUI</h1>
+            <div class="server-selector">
+                <label for="serverSelect">Select Server:</label>
+                <select id="serverSelect">
+                    <option value="">Loading...</option>
+                </select>
+            </div>
+        </header>
+
+        <div class="content">
+            <aside class="sidebar">
+                <div class="info-panel">
+                    <h2>Server Info</h2>
+                    <div id="serverInfo">
+                        <p>Select a server...</p>
+                    </div>
+                </div>
+
+                <div class="controls-panel">
+                    <h2>Map Controls</h2>
+                    <div class="control-group">
+                        <h3>Layers</h3>
+                        <label><input type="checkbox" id="showPlayers" checked> Player Positions</label>
+                        <label><input type="checkbox" id="showPlayerNames" checked> Player Names</label>
+                        <label><input type="checkbox" id="showTrails" checked> Player Trails</label>
+                        <div id="trailDurationConfig" style="margin: 8px 0 8px 20px; padding: 8px; background: var(--bg-primary); border-radius: 4px;">
+                            <label style="display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 5px;">Trail Duration: <span id="trailDurationValue">10</span> minutes</label>
+                            <input type="range" id="trailDurationSlider" min="1" max="30" value="10" style="width: 100%; height: 6px; background: var(--bg-secondary); border-radius: 3px; outline: none; -webkit-appearance: none;">
+                            <style>
+                                #trailDurationSlider::-webkit-slider-thumb {
+                                    -webkit-appearance: none;
+                                    appearance: none;
+                                    width: 16px;
+                                    height: 16px;
+                                    background: var(--accent);
+                                    cursor: pointer;
+                                    border-radius: 50%;
+                                }
+                                #trailDurationSlider::-moz-range-thumb {
+                                    width: 16px;
+                                    height: 16px;
+                                    background: var(--accent);
+                                    cursor: pointer;
+                                    border-radius: 50%;
+                                    border: none;
+                                }
+                            </style>
+                        </div>
+                        <label><input type="checkbox" id="showMonuments" checked> Monuments</label>
+                        <label><input type="checkbox" id="showGrid" checked> Grid</label>
+                        <label><input type="checkbox" id="showMarkers"> Custom Markers</label>
+                        <label><input type="checkbox" id="showVendingMachines"> Vending Machines</label>
+                        <label><input type="checkbox" id="showEvents"> Events (Cargo/Heli)</label>
+                        <label><input type="checkbox" id="showRadZones"> Rad Zones</label>
+                        <label><input type="checkbox" id="showDeathMarkers"> Death Markers (24h)</label>
+                    </div>
+                    <div class="control-group" id="deathMarkersConfig" style="display: none; margin-top: 10px; padding: 10px; background: var(--bg-primary); border-radius: 4px;">
+                        <h4 style="margin: 0 0 8px 0; font-size: 12px; color: var(--text-secondary);">Death Markers Time Range:</h4>
+                        <select id="deathMarkersTimeRange" style="width: 100%; padding: 5px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px;">
+                            <option value="1">Last 1 hour</option>
+                            <option value="3">Last 3 hours</option>
+                            <option value="6">Last 6 hours</option>
+                            <option value="12">Last 12 hours</option>
+                            <option value="24" selected>Last 24 hours</option>
+                            <option value="48">Last 2 days</option>
+                            <option value="168">Last 7 days</option>
+                            <option value="720">Last 30 days</option>
+                        </select>
+                        <button id="refreshDeathMarkers" style="width: 100%; margin-top: 8px; padding: 6px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">🔄 Refresh Deaths</button>
+                    </div>
+                </div>
+
+                <div class="minimap-panel">
+                    <h2>Minimap</h2>
+                    <div id="minimapContainer" style="text-align: center; margin-bottom: 10px;">
+                        <canvas id="minimapCanvas" style="border: 2px solid var(--accent); border-radius: 4px; max-width: 100%; image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges;"></canvas>
+                    </div>
+                    <div class="control-group">
+                        <label for="followPlayer">Follow Player:</label>
+                        <select id="followPlayer" style="width: 100%; padding: 5px; margin: 5px 0; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px;">
+                            <option value="">Auto-follow</option>
+                        </select>
+                        <div style="display: flex; gap: 5px; margin: 10px 0;">
+                            <button id="minimapZoomIn" style="flex: 1; padding: 6px; background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; cursor: pointer;">🔍+</button>
+                            <button id="minimapZoomOut" style="flex: 1; padding: 6px; background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; cursor: pointer;">🔍-</button>
+                            <button id="minimapReset" style="flex: 1; padding: 6px; background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; cursor: pointer;">⟲</button>
+                        </div>
+                        <label style="display: block; padding: 8px 0;"><input type="checkbox" id="hideMainMap"> Hide Main Map (PiP only)</label>
+                        <button id="pipButton" style="width: 100%; padding: 8px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">📺 Picture-in-Picture</button>
+                        <p style="font-size: 11px; color: var(--text-secondary); margin-top: 5px;">💡 Minimap: Scroll to zoom, right-drag to pan</p>
+                    </div>
+                </div>
+
+                <div class="team-panel">
+                    <h2>Team Members</h2>
+                    <div id="teamList"></div>
+                </div>
+
+                <div class="events-panel">
+                    <h2>Recent Events</h2>
+                    <div id="eventsList"></div>
+                </div>
+            </aside>
+
+            <main class="map-container">
+                <div id="mapWrapper" style="position: relative;">
+                    <canvas id="map-background-canvas" style="position: absolute; top: 0; left: 0; z-index: 1;"></canvas>
+                    <canvas id="map-static-canvas" style="position: absolute; top: 0; left: 0; z-index: 2;"></canvas>
+                    <canvas id="map-dynamic-canvas" style="position: absolute; top: 0; left: 0; z-index: 3;"></canvas>
+                    <div id="mapOverlay" style="position: absolute; top: 0; left: 0; z-index: 4; pointer-events: none;"></div>
+                </div>
+                <div class="map-controls">
+                    <button id="zoomIn" title="Zoom In">+</button>
+                    <button id="zoomOut" title="Zoom Out">-</button>
+                    <button id="resetZoom" title="Reset View">⟲</button>
+                    <button id="toggleFullscreen" title="Toggle Fullscreen">⛶</button>
+                </div>
+            </main>
+        </div>
+
+        <footer>
+            <div class="status">
+                <span id="connectionStatus" class="status-disconnected">● Disconnected</span>
+                <span id="lastUpdate">Last update: Never</span>
+            </div>
+        </footer>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/api-client.js"></script>
+    <script src="/js/auth-manager.js"></script>
+    <script src="/js/map-replay.js"></script>
+    <script src="/js/statistics.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

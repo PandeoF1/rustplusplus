@@ -79,6 +79,28 @@ module.exports = {
                             name: player.name,
                             location: player.pos
                         });
+                        
+                        // Track death in statistics database
+                        if (client.webServer?.statisticsTracker) {
+                            const x = player.pos?.x || null;
+                            const y = player.pos?.y || null;
+                            client.webServer.statisticsTracker.trackPlayerDeath(
+                                guildId,
+                                serverId,
+                                player.steamId,
+                                player.name,
+                                x,
+                                y
+                            );
+                            
+                            // Reset player trail on death
+                            client.webServer.broadcastTrailReset(guildId, player.steamId);
+                            
+                            // Broadcast team death for 5-minute marker (always shown)
+                            if (x !== null && y !== null) {
+                                client.webServer.broadcastTeamDeath(guildId, player.steamId, player.name, x, y);
+                            }
+                        }
                     }
 
                     if (player.isGoneAfk(playerUpdated)) {

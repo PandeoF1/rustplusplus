@@ -30,5 +30,9 @@ module.exports = {
         clientId: process.env.RPP_DISCORD_CLIENT_ID || '',
         token: process.env.RPP_DISCORD_TOKEN || '',
         needAdminPrivileges: process.env.RPP_NEED_ADMIN_PRIVILEGES || true, /* If true, only admins can delete (server, switch..), manage credentials and reset a channel */
+    },
+    webui: {
+        enabled: process.env.RPP_WEBUI_ENABLED !== 'false', /* Enable or disable the Web UI */
+        port: process.env.RPP_WEBUI_PORT || 3000, /* Port for the Web UI server */
     }
 };

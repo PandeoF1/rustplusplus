@@ -29,6 +29,7 @@ A NodeJS Discord Bot that uses the [rustplus.js](https://github.com/liamcottle/r
 
 ## **Features**
 
+* **🌐 [WebUI - Live Map Viewer](docs/webui.md)** - Access a real-time interactive web interface with live player tracking, map overlays, and server monitoring.
 * Receive notifications for [In-Game Events](docs/discord_text_channels.md#events-channel) (Patrol Helicopter, Cargo Ship, Chinook 47, Oil Rigs triggered).
 * Control [Smart Switches](docs/smart_devices.md#smart-switches) or Groups of Smart Switches via Discord or In-Game Team Chat.
 * Setup [Smart Alarms](docs/smart_devices.md#smart-alarms) to notify in Discord or In-Game Team Chat whenever they are triggered.
@@ -69,13 +70,30 @@ or
 
 ## **Running via docker**
 
-    $ docker run --rm -it -v ${pwd}/credentials:/app/credentials -v ${pwd}/instances:/app/instances -v ${pwd}/logs:/app/logs -e RPP_DISCORD_CLIENT_ID=111....1111 -e RPP_DISCORD_TOKEN=token --name rpp ghcr.io/alexemanuelol/rustplusplus
+    $ docker run --rm -it -v ${pwd}/credentials:/app/credentials -v ${pwd}/instances:/app/instances -v ${pwd}/logs:/app/logs -e RPP_DISCORD_CLIENT_ID=111....1111 -e RPP_DISCORD_TOKEN=token -p 3000:3000 --name rpp ghcr.io/alexemanuelol/rustplusplus
 
 or
 
     $ docker-compose up -d
 
 Make sure you use the correct values for DISCORD_CLIENT_ID as well as DISCORD_TOKEN in the docker command/docker-compose.yml
+
+**Note:** The `-p 3000:3000` flag exposes the WebUI port. Access it at `http://localhost:3000`
+
+## **WebUI - Live Map Viewer**
+
+Access the interactive web interface to monitor your Rust servers in real-time! Once the bot is running, open your browser and navigate to:
+
+    http://localhost:3000
+
+Features include:
+- 🗺️ Live interactive map with player positions
+- 📍 Real-time player tracking and movement trails
+- 🎯 Map overlays (grid, monuments, rad zones, events)
+- 👥 Team member status and information
+- ⚡ WebSocket-powered real-time updates
+
+For detailed WebUI documentation, see [docs/webui.md](docs/webui.md)
 
 ## **Thanks to**
 

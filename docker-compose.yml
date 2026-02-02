@@ -4,10 +4,15 @@ services:
         volumes:
             - ./credentials:/app/credentials
             - ./instances:/app/instances
+            - ./database:/app/database
             - ./logs:/app/logs
             - ./maps:/app/maps
+        ports:
+            - "3000:3000"  # WebUI port
         environment:
             - RPP_DISCORD_CLIENT_ID=111....1111
             - RPP_DISCORD_TOKEN=token
+            - RPP_WEBUI_ENABLED=true
+            - RPP_WEBUI_PORT=3000
         container_name: rpp
         image: ghcr.io/alexemanuelol/rustplusplus

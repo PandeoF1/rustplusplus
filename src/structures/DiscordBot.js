@@ -34,6 +34,7 @@ const Logger = require('./Logger.js');
 const PermissionHandler = require('../handlers/permissionHandler.js');
 const RustLabs = require('../structures/RustLabs');
 const RustPlus = require('../structures/RustPlus');
+const WebServer = require('../webserver/WebServer.js');
 
 class DiscordBot extends Discord.Client {
     constructor(props) {
@@ -71,6 +72,9 @@ class DiscordBot extends Discord.Client {
         this.battlemetricsIntervalCounter = 0;
 
         this.voiceLeaveTimeouts = new Object();
+
+        /* Web UI Server */
+        this.webServer = null;
 
         this.loadDiscordCommands();
         this.loadDiscordEvents();
@@ -186,6 +190,12 @@ class DiscordBot extends Discord.Client {
                 } break;
             }
         });
+
+        /* Start the Web UI server if enabled */
+        if (Config.webui.enabled) {
+            this.webServer = new WebServer(this, Config.webui.port);
+            this.webServer.start();
+        }
     }
 
     log(title, text, level = 'info') {
