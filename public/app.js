@@ -395,6 +395,12 @@ class RustPlusWebUI {
                     
                     // Add to player trails
                     if (p.isOnline && p.isAlive) {
+                        // Validate player position (not at 0,0 and not undefined)
+                        if (!p.x || !p.y || (p.x === 0 && p.y === 0)) {
+                            // Skip invalid positions
+                            continue;
+                        }
+                        
                         if (!this.playerTrails[p.steamId]) {
                             this.playerTrails[p.steamId] = [];
                         }
