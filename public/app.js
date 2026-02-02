@@ -170,6 +170,8 @@ class RustPlusWebUI {
         this.PATROL_MARKER_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
 
         this.playerTrails = {};
+        this.playerTrailStartTime = {}; // Track when player trails should start recording
+        this.TRAIL_DELAY = 5000; // Wait 5 seconds before recording trails for new players
         this.needsRender = true;
         this.lastRenderTime = 0;
         this.dirtyStatic = true;
@@ -401,6 +403,17 @@ class RustPlusWebUI {
                             return;
                         }
                         
+                        // Initialize trail start time for new players
+                        if (!this.playerTrailStartTime[p.steamId]) {
+                            this.playerTrailStartTime[p.steamId] = Date.now();
+                            return; // Don't add trail yet
+                        }
+                        
+                        // Wait 5 seconds before starting to record trails
+                        if (Date.now() - this.playerTrailStartTime[p.steamId] < this.TRAIL_DELAY) {
+                            return; // Still in delay period
+                        }
+                        
                         if (!this.playerTrails[p.steamId]) {
                             this.playerTrails[p.steamId] = [];
                         }
@@ -434,6 +447,8 @@ class RustPlusWebUI {
             if (data.steamId && this.playerTrails[data.steamId]) {
                 console.log(`[WebUI] Resetting trail for player ${data.steamId}`);
                 this.playerTrails[data.steamId] = [];
+                // Reset the trail start time so they wait 5 seconds again
+                delete this.playerTrailStartTime[data.steamId];
                 this.dirtyDynamic = true;
                 this.needsRender = true;
             }
