@@ -398,7 +398,7 @@ class RustPlusWebUI {
                         // Validate player position (not at 0,0 and not undefined)
                         if (!p.x || !p.y || (p.x === 0 && p.y === 0)) {
                             // Skip invalid positions
-                            continue;
+                            return;
                         }
                         
                         if (!this.playerTrails[p.steamId]) {
