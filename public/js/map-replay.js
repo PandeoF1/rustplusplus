@@ -13,6 +13,7 @@ class MapReplay {
         this.replayInterval = null;
         this.playerTrails = {}; // Store trail history for each player
         this.maxTrailLength = 500; // Maximum points per trail
+        this.trailFadeIntensity = 0.7; // 0 = no fade (solid), 1 = full fade
         this.deathMarkers = []; // Store all death markers from replay data
         this.minimapDeathMarkers = []; // Store death markers for minimap with timestamps
         this.controlsHeight = 80; // Height of replay control bar
@@ -104,6 +105,11 @@ class MapReplay {
                 <div class="replay-progress-container">
                     <input type="range" id="replayProgressBar" class="replay-progress-bar" min="0" max="100" value="0">
                 </div>
+                <div class="replay-trail-fade-container" style="display: flex; align-items: center; gap: 8px; padding: 5px 10px; background: rgba(0,0,0,0.3); border-radius: 4px; margin: 0 10px;">
+                    <label style="color: white; font-size: 12px; white-space: nowrap;">Trail Fade:</label>
+                    <input type="range" id="replayTrailFade" class="trail-fade-slider" min="0" max="100" value="70" style="flex: 1; min-width: 100px;">
+                    <span id="replayTrailFadeValue" style="color: white; font-size: 12px; min-width: 35px;">70%</span>
+                </div>
                 <div class="replay-buttons">
                     <button id="replayPlayPause" class="replay-btn replay-btn-play" title="Play/Pause">▶</button>
                     <button id="replayStop" class="replay-btn replay-btn-stop" title="Stop">⏹</button>
@@ -148,6 +154,27 @@ class MapReplay {
             const progress = parseFloat(e.target.value) / 100;
             const newTime = this.startTime + (this.endTime - this.startTime) * progress;
             this.seek(newTime);
+        };
+        
+        // Trail fade slider
+        const trailFadeSlider = document.getElementById('replayTrailFade');
+        const trailFadeValue = document.getElementById('replayTrailFadeValue');
+        
+        trailFadeSlider.oninput = (e) => {
+            const value = parseInt(e.target.value);
+            this.trailFadeIntensity = value / 100;
+            
+            if (value === 0) {
+                trailFadeValue.textContent = 'OFF';
+                trailFadeValue.style.color = '#4caf50';
+            } else {
+                trailFadeValue.textContent = `${value}%`;
+                trailFadeValue.style.color = 'white';
+            }
+            
+            // Trigger re-render
+            this.mapRenderer.dirtyDynamic = true;
+            this.mapRenderer.needsRender = true;
         };
         
         this.updateHTMLControls();
@@ -360,9 +387,20 @@ class MapReplay {
                 
                 const color = playerData.color;
                 
-                // Draw trail with gradient
+                // Draw trail with configurable gradient
                 for (let i = 0; i < trail.length - 1; i++) {
-                    const alpha = (i / trail.length) * 0.7 + 0.3;
+                    // Calculate alpha based on fade intensity
+                    // If fade is 0 (OFF), alpha is always 0.7 (solid)
+                    // If fade is 1 (100%), alpha fades from 0.3 to 1.0
+                    let alpha;
+                    if (this.trailFadeIntensity === 0) {
+                        alpha = 0.7; // Solid trail, no fade
+                    } else {
+                        // Apply fade: newer points are more opaque
+                        const fadeProgress = (i / trail.length);
+                        alpha = fadeProgress * this.trailFadeIntensity + (1 - this.trailFadeIntensity) * 0.7;
+                    }
+                    
                     ctx.globalAlpha = alpha;
                     ctx.strokeStyle = color;
                     ctx.lineWidth = 3;
