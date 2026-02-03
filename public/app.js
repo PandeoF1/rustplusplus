@@ -729,8 +729,9 @@ class RustPlusWebUI {
         try {
             const hoursAgo = this.deathMarkersTimeRange;
             const startTime = Math.floor(Date.now() / 1000) - (hoursAgo * 3600);
+            const serverIdParam = this.serverData?.serverId ? `&serverId=${this.serverData.serverId}` : '';
             
-            const response = await fetch(`/api/statistics/deaths/${this.currentGuildId}?startTime=${startTime}&serverId=${this.serverData?.serverId || ''}`);
+            const response = await fetch(`/api/statistics/deaths/${this.currentGuildId}?startTime=${startTime}${serverIdParam}`);
             if (response.ok) {
                 const deaths = await response.json();
                 const now = Date.now();

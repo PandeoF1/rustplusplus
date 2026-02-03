@@ -228,13 +228,23 @@ class StatisticsDatabase {
     }
 
     getPlayerSessions(guildId, serverId, steamId, limit = 100) {
-        const stmt = this.db.prepare(`
-            SELECT * FROM player_sessions
-            WHERE guild_id = ? AND ${serverId ? 'server_id = ? AND' : ''} steam_id = ?
-            ORDER BY session_start DESC
-            LIMIT ?
-        `);
-        return serverId ? stmt.all(guildId, serverId, steamId, limit) : stmt.all(guildId, steamId, limit);
+        if (serverId && serverId !== '') {
+            const stmt = this.db.prepare(`
+                SELECT * FROM player_sessions
+                WHERE guild_id = ? AND server_id = ? AND steam_id = ?
+                ORDER BY session_start DESC
+                LIMIT ?
+            `);
+            return stmt.all(guildId, serverId, steamId, limit);
+        } else {
+            const stmt = this.db.prepare(`
+                SELECT * FROM player_sessions
+                WHERE guild_id = ? AND steam_id = ?
+                ORDER BY session_start DESC
+                LIMIT ?
+            `);
+            return stmt.all(guildId, steamId, limit);
+        }
     }
 
     mergeRecentSessions(guildId, mergeGapSeconds = 120, lookbackHours = 48) {
@@ -360,22 +370,40 @@ class StatisticsDatabase {
     }
 
     getPlayerPositions(guildId, serverId, steamId, startTime, endTime) {
-        const stmt = this.db.prepare(`
-            SELECT * FROM player_positions
-            WHERE guild_id = ? AND ${serverId ? 'server_id = ? AND' : ''} steam_id = ? AND timestamp BETWEEN ? AND ?
-            ORDER BY timestamp ASC
-        `);
-        return serverId ? stmt.all(guildId, serverId, steamId, startTime, endTime) : stmt.all(guildId, steamId, startTime, endTime);
+        if (serverId && serverId !== '') {
+            const stmt = this.db.prepare(`
+                SELECT * FROM player_positions
+                WHERE guild_id = ? AND server_id = ? AND steam_id = ? AND timestamp BETWEEN ? AND ?
+                ORDER BY timestamp ASC
+            `);
+            return stmt.all(guildId, serverId, steamId, startTime, endTime);
+        } else {
+            const stmt = this.db.prepare(`
+                SELECT * FROM player_positions
+                WHERE guild_id = ? AND steam_id = ? AND timestamp BETWEEN ? AND ?
+                ORDER BY timestamp ASC
+            `);
+            return stmt.all(guildId, steamId, startTime, endTime);
+        }
     }
 
     getRecentPositions(guildId, serverId, minutes = 60) {
         const startTime = Math.floor(Date.now() / 1000) - (minutes * 60);
-        const stmt = this.db.prepare(`
-            SELECT * FROM player_positions
-            WHERE guild_id = ? AND ${serverId ? 'server_id = ? AND' : ''} timestamp > ?
-            ORDER BY timestamp ASC
-        `);
-        return serverId ? stmt.all(guildId, serverId, startTime) : stmt.all(guildId, startTime);
+        if (serverId && serverId !== '') {
+            const stmt = this.db.prepare(`
+                SELECT * FROM player_positions
+                WHERE guild_id = ? AND server_id = ? AND timestamp > ?
+                ORDER BY timestamp ASC
+            `);
+            return stmt.all(guildId, serverId, startTime);
+        } else {
+            const stmt = this.db.prepare(`
+                SELECT * FROM player_positions
+                WHERE guild_id = ? AND timestamp > ?
+                ORDER BY timestamp ASC
+            `);
+            return stmt.all(guildId, startTime);
+        }
     }
 
     // ==================== PLAYER DEATHS ====================
@@ -390,31 +418,59 @@ class StatisticsDatabase {
     }
 
     getPlayerDeaths(guildId, serverId, steamId, limit = 100) {
-        const stmt = this.db.prepare(`
-            SELECT * FROM player_deaths
-            WHERE guild_id = ? AND ${serverId ? 'server_id = ? AND' : ''} steam_id = ?
-            ORDER BY death_time DESC
-            LIMIT ?
-        `);
-        return serverId ? stmt.all(guildId, serverId, steamId, limit) : stmt.all(guildId, steamId, limit);
+        if (serverId && serverId !== '') {
+            const stmt = this.db.prepare(`
+                SELECT * FROM player_deaths
+                WHERE guild_id = ? AND server_id = ? AND steam_id = ?
+                ORDER BY death_time DESC
+                LIMIT ?
+            `);
+            return stmt.all(guildId, serverId, steamId, limit);
+        } else {
+            const stmt = this.db.prepare(`
+                SELECT * FROM player_deaths
+                WHERE guild_id = ? AND steam_id = ?
+                ORDER BY death_time DESC
+                LIMIT ?
+            `);
+            return stmt.all(guildId, steamId, limit);
+        }
     }
 
     getAllDeaths(guildId, serverId, limit = 1000) {
-        const stmt = this.db.prepare(`
-            SELECT * FROM player_deaths
-            WHERE guild_id = ? ${serverId ? 'AND server_id = ?' : ''}
-            ORDER BY death_time DESC
-            LIMIT ?
-        `);
-        return serverId ? stmt.all(guildId, serverId, limit) : stmt.all(guildId, limit);
+        if (serverId && serverId !== '') {
+            const stmt = this.db.prepare(`
+                SELECT * FROM player_deaths
+                WHERE guild_id = ? AND server_id = ?
+                ORDER BY death_time DESC
+                LIMIT ?
+            `);
+            return stmt.all(guildId, serverId, limit);
+        } else {
+            const stmt = this.db.prepare(`
+                SELECT * FROM player_deaths
+                WHERE guild_id = ?
+                ORDER BY death_time DESC
+                LIMIT ?
+            `);
+            return stmt.all(guildId, limit);
+        }
     }
 
     getTotalDeaths(guildId, serverId, steamId) {
-        const stmt = this.db.prepare(`
-            SELECT COUNT(*) as count FROM player_deaths
-            WHERE guild_id = ? AND ${serverId ? 'server_id = ? AND' : ''} steam_id = ?
-        `);
-        return serverId ? stmt.get(guildId, serverId, steamId).count : stmt.get(guildId, steamId).count;
+        if (serverId && serverId !== '') {
+            const stmt = this.db.prepare(`
+                SELECT COUNT(*) as count FROM player_deaths
+                WHERE guild_id = ? AND server_id = ? AND steam_id = ?
+            `);
+            return stmt.get(guildId, serverId, steamId).count;
+        } else {
+            const stmt = this.db.prepare(`
+                SELECT COUNT(*) as count FROM player_deaths
+                WHERE guild_id = ? AND steam_id = ?
+            `);
+            return stmt.get(guildId, steamId).count;
+        }
     }
 
     // ==================== CHAT HISTORY ====================
@@ -429,23 +485,43 @@ class StatisticsDatabase {
     }
 
     getChatHistory(guildId, serverId, limit = 100) {
-        const stmt = this.db.prepare(`
-            SELECT * FROM chat_history
-            WHERE guild_id = ? ${serverId ? 'AND server_id = ?' : ''}
-            ORDER BY timestamp DESC
-            LIMIT ?
-        `);
-        return serverId ? stmt.all(guildId, serverId, limit) : stmt.all(guildId, limit);
+        if (serverId && serverId !== '') {
+            const stmt = this.db.prepare(`
+                SELECT * FROM chat_history
+                WHERE guild_id = ? AND server_id = ?
+                ORDER BY timestamp DESC
+                LIMIT ?
+            `);
+            return stmt.all(guildId, serverId, limit);
+        } else {
+            const stmt = this.db.prepare(`
+                SELECT * FROM chat_history
+                WHERE guild_id = ?
+                ORDER BY timestamp DESC
+                LIMIT ?
+            `);
+            return stmt.all(guildId, limit);
+        }
     }
 
     getPlayerChatHistory(guildId, serverId, steamId, limit = 100) {
-        const stmt = this.db.prepare(`
-            SELECT * FROM chat_history
-            WHERE guild_id = ? AND ${serverId ? 'server_id = ? AND' : ''} steam_id = ?
-            ORDER BY timestamp DESC
-            LIMIT ?
-        `);
-        return serverId ? stmt.all(guildId, serverId, steamId, limit) : stmt.all(guildId, steamId, limit);
+        if (serverId && serverId !== '') {
+            const stmt = this.db.prepare(`
+                SELECT * FROM chat_history
+                WHERE guild_id = ? AND server_id = ? AND steam_id = ?
+                ORDER BY timestamp DESC
+                LIMIT ?
+            `);
+            return stmt.all(guildId, serverId, steamId, limit);
+        } else {
+            const stmt = this.db.prepare(`
+                SELECT * FROM chat_history
+                WHERE guild_id = ? AND steam_id = ?
+                ORDER BY timestamp DESC
+                LIMIT ?
+            `);
+            return stmt.all(guildId, steamId, limit);
+        }
     }
 
     // ==================== COMMAND HISTORY ====================
@@ -460,13 +536,23 @@ class StatisticsDatabase {
     }
 
     getCommandHistory(guildId, serverId, limit = 100) {
-        const stmt = this.db.prepare(`
-            SELECT * FROM command_history
-            WHERE guild_id = ? ${serverId ? 'AND server_id = ?' : ''}
-            ORDER BY timestamp DESC
-            LIMIT ?
-        `);
-        return serverId ? stmt.all(guildId, serverId, limit) : stmt.all(guildId, limit);
+        if (serverId && serverId !== '') {
+            const stmt = this.db.prepare(`
+                SELECT * FROM command_history
+                WHERE guild_id = ? AND server_id = ?
+                ORDER BY timestamp DESC
+                LIMIT ?
+            `);
+            return stmt.all(guildId, serverId, limit);
+        } else {
+            const stmt = this.db.prepare(`
+                SELECT * FROM command_history
+                WHERE guild_id = ?
+                ORDER BY timestamp DESC
+                LIMIT ?
+            `);
+            return stmt.all(guildId, limit);
+        }
     }
 
     // ==================== CONNECTION STATS ====================
@@ -481,12 +567,21 @@ class StatisticsDatabase {
     }
 
     getConnectionStats(guildId, serverId, startTime, endTime) {
-        const stmt = this.db.prepare(`
-            SELECT * FROM connection_stats
-            WHERE guild_id = ? AND ${serverId ? 'server_id = ? AND' : ''} timestamp BETWEEN ? AND ?
-            ORDER BY timestamp ASC
-        `);
-        return serverId ? stmt.all(guildId, serverId, startTime, endTime) : stmt.all(guildId, startTime, endTime);
+        if (serverId && serverId !== '') {
+            const stmt = this.db.prepare(`
+                SELECT * FROM connection_stats
+                WHERE guild_id = ? AND server_id = ? AND timestamp BETWEEN ? AND ?
+                ORDER BY timestamp ASC
+            `);
+            return stmt.all(guildId, serverId, startTime, endTime);
+        } else {
+            const stmt = this.db.prepare(`
+                SELECT * FROM connection_stats
+                WHERE guild_id = ? AND timestamp BETWEEN ? AND ?
+                ORDER BY timestamp ASC
+            `);
+            return stmt.all(guildId, startTime, endTime);
+        }
     }
 
     // ==================== PLAYER COLORS ====================
@@ -576,17 +671,29 @@ class StatisticsDatabase {
     getServerStatistics(guildId, serverId, days = 7) {
         const startTime = Math.floor(Date.now() / 1000) - (days * 24 * 3600);
         
-        const stmt = this.db.prepare(`
-            SELECT 
-                COUNT(DISTINCT steam_id) as unique_players,
-                COUNT(*) as total_sessions,
-                SUM(CASE WHEN duration_seconds IS NOT NULL THEN duration_seconds ELSE 0 END) as total_playtime,
-                AVG(CASE WHEN duration_seconds IS NOT NULL THEN duration_seconds ELSE NULL END) as avg_session
-            FROM player_sessions
-            WHERE guild_id = ? AND ${serverId ? 'server_id = ? AND' : ''} session_start > ?
-        `);
-        
-        return serverId ? stmt.get(guildId, serverId, startTime) : stmt.get(guildId, startTime);
+        if (serverId && serverId !== '') {
+            const stmt = this.db.prepare(`
+                SELECT 
+                    COUNT(DISTINCT steam_id) as unique_players,
+                    COUNT(*) as total_sessions,
+                    SUM(CASE WHEN duration_seconds IS NOT NULL THEN duration_seconds ELSE 0 END) as total_playtime,
+                    AVG(CASE WHEN duration_seconds IS NOT NULL THEN duration_seconds ELSE NULL END) as avg_session
+                FROM player_sessions
+                WHERE guild_id = ? AND server_id = ? AND session_start > ?
+            `);
+            return stmt.get(guildId, serverId, startTime);
+        } else {
+            const stmt = this.db.prepare(`
+                SELECT 
+                    COUNT(DISTINCT steam_id) as unique_players,
+                    COUNT(*) as total_sessions,
+                    SUM(CASE WHEN duration_seconds IS NOT NULL THEN duration_seconds ELSE 0 END) as total_playtime,
+                    AVG(CASE WHEN duration_seconds IS NOT NULL THEN duration_seconds ELSE NULL END) as avg_session
+                FROM player_sessions
+                WHERE guild_id = ? AND session_start > ?
+            `);
+            return stmt.get(guildId, startTime);
+        }
     }
 
     // ==================== MAINTENANCE & CLEANUP ====================

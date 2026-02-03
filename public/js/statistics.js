@@ -374,9 +374,10 @@ class StatisticsManager {
 
             const steamIds = teamData.players.map(p => p.steamId);
             const defaultHours = 168; // 7 days default
+            const serverIdParam = this.serverId ? `&serverId=${this.serverId}` : '';
             const [teamStats, connectionStats] = await Promise.all([
-                this.apiClient.get(`/api/statistics/team/${this.guildId}?steamIds=${steamIds.join(',')}&serverId=${this.serverId || ''}`),
-                this.apiClient.get(`/api/statistics/connections/${this.guildId}?hours=${defaultHours}&serverId=${this.serverId || ''}`)
+                this.apiClient.get(`/api/statistics/team/${this.guildId}?steamIds=${steamIds.join(',')}${serverIdParam}`),
+                this.apiClient.get(`/api/statistics/connections/${this.guildId}?hours=${defaultHours}${serverIdParam}`)
             ]);
 
             const body = document.getElementById('statisticsBody');
@@ -455,7 +456,8 @@ class StatisticsManager {
     async updatePopulationTimeline() {
         try {
             const hours = parseInt(document.getElementById('populationTimeRange')?.value || '168');
-            const connectionStats = await this.apiClient.get(`/api/statistics/connections/${this.guildId}?hours=${hours}&serverId=${this.serverId || ''}`);
+            const serverIdParam = this.serverId ? `&serverId=${this.serverId}` : '';
+            const connectionStats = await this.apiClient.get(`/api/statistics/connections/${this.guildId}?hours=${hours}${serverIdParam}`);
             this.renderPopulationTimeline(connectionStats);
         } catch (error) {
             console.error('Error updating population timeline:', error);
@@ -1508,8 +1510,9 @@ class StatisticsManager {
 
         const timeRange = document.getElementById('timeRangeSelect')?.value || '168';
         const steamIds = teamData.players.map(p => p.steamId).join(',');
+        const serverIdParam = this.serverId ? `&serverId=${this.serverId}` : '';
         
-        let url = `/api/statistics/sessions/${this.guildId}?steamIds=${steamIds}&serverId=${this.serverId || ''}`;
+        let url = `/api/statistics/sessions/${this.guildId}?steamIds=${steamIds}${serverIdParam}`;
         if (timeRange !== 'all') {
             // Add time-based filtering to get ALL sessions in the range
             const hours = parseInt(timeRange);
