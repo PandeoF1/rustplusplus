@@ -360,9 +360,10 @@ class MapReplay {
                 }
             }
             
-            // Limit trail
-            if (this.playerTrails[steamId].length > this.maxTrailLength) {
-                this.playerTrails[steamId] = this.playerTrails[steamId].slice(-this.maxTrailLength);
+            // Limit trail dynamically based on fade setting
+            const maxLength = this.getMaxTrailLength();
+            if (this.playerTrails[steamId].length > maxLength) {
+                this.playerTrails[steamId] = this.playerTrails[steamId].slice(-maxLength);
             }
         });
         
