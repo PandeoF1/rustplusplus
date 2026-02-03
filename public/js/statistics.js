@@ -1,9 +1,10 @@
 // Statistics Manager for RustPlus WebUI
 
 class StatisticsManager {
-    constructor(apiClient, guildId) {
+    constructor(apiClient, guildId, serverId = null) {
         this.apiClient = apiClient;
         this.guildId = guildId;
+        this.serverId = serverId;
         this.currentView = 'overview';
         this.selectedPlayer = null;
         this.charts = {};
@@ -374,8 +375,8 @@ class StatisticsManager {
             const steamIds = teamData.players.map(p => p.steamId);
             const defaultHours = 168; // 7 days default
             const [teamStats, connectionStats] = await Promise.all([
-                this.apiClient.get(`/api/statistics/team/${this.guildId}?steamIds=${steamIds.join(',')}`),
-                this.apiClient.get(`/api/statistics/connections/${this.guildId}?hours=${defaultHours}`)
+                this.apiClient.get(`/api/statistics/team/${this.guildId}?steamIds=${steamIds.join(',')}&serverId=${this.serverId || ''}`),
+                this.apiClient.get(`/api/statistics/connections/${this.guildId}?hours=${defaultHours}&serverId=${this.serverId || ''}`)
             ]);
 
             const body = document.getElementById('statisticsBody');
@@ -454,7 +455,7 @@ class StatisticsManager {
     async updatePopulationTimeline() {
         try {
             const hours = parseInt(document.getElementById('populationTimeRange')?.value || '168');
-            const connectionStats = await this.apiClient.get(`/api/statistics/connections/${this.guildId}?hours=${hours}`);
+            const connectionStats = await this.apiClient.get(`/api/statistics/connections/${this.guildId}?hours=${hours}&serverId=${this.serverId || ''}`);
             this.renderPopulationTimeline(connectionStats);
         } catch (error) {
             console.error('Error updating population timeline:', error);
@@ -761,7 +762,7 @@ class StatisticsManager {
             const now = Math.floor(Date.now() / 1000);
             const startTime = timeRange === 'all' ? 0 : now - (parseInt(timeRange) * 3600);
             
-            const url = `/api/statistics/deaths/${this.guildId}?startTime=${startTime}&endTime=${now}&limit=10000`;
+            const url = `/api/statistics/deaths/${this.guildId}?startTime=${startTime}&endTime=${now}&limit=10000&serverId=${this.serverId || ''}`;
             console.log('[Deaths] Fetching from URL:', url);
             
             const deathsResponse = await this.apiClient.get(url);
@@ -1508,7 +1509,7 @@ class StatisticsManager {
         const timeRange = document.getElementById('timeRangeSelect')?.value || '168';
         const steamIds = teamData.players.map(p => p.steamId).join(',');
         
-        let url = `/api/statistics/sessions/${this.guildId}?steamIds=${steamIds}`;
+        let url = `/api/statistics/sessions/${this.guildId}?steamIds=${steamIds}&serverId=${this.serverId || ''}`;
         if (timeRange !== 'all') {
             // Add time-based filtering to get ALL sessions in the range
             const hours = parseInt(timeRange);

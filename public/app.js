@@ -361,6 +361,11 @@ class RustPlusWebUI {
         this.socket.on('serverUpdate', (data) => {
             const firstUpdate = !this.serverData;
             this.serverData = data;
+            
+            // Update serverId in statistics manager
+            if (this.statisticsManager && data.serverId) {
+                this.statisticsManager.serverId = data.serverId;
+            }
 
             if ((firstUpdate || !this.worldRect) && this.mapImage && this.serverData.info) {
                 this.worldRect = this.computeWorldRectFromWorldSize(
@@ -663,9 +668,10 @@ class RustPlusWebUI {
         // Initialize statistics manager for this guild
         if (this.statisticsManager) {
             this.statisticsManager.guildId = guildId;
+            this.statisticsManager.serverId = null; // Will be updated when serverData arrives
             this.statisticsManager.authManager = this.authManager; // Share auth manager
         } else {
-            this.statisticsManager = new StatisticsManager(this.apiClient, guildId);
+            this.statisticsManager = new StatisticsManager(this.apiClient, guildId, null);
             this.statisticsManager.authManager = this.authManager; // Share auth manager
         }
         
@@ -724,7 +730,7 @@ class RustPlusWebUI {
             const hoursAgo = this.deathMarkersTimeRange;
             const startTime = Math.floor(Date.now() / 1000) - (hoursAgo * 3600);
             
-            const response = await fetch(`/api/statistics/deaths/${this.currentGuildId}?startTime=${startTime}`);
+            const response = await fetch(`/api/statistics/deaths/${this.currentGuildId}?startTime=${startTime}&serverId=${this.serverData?.serverId || ''}`);
             if (response.ok) {
                 const deaths = await response.json();
                 const now = Date.now();

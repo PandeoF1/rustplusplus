@@ -260,52 +260,52 @@ class StatisticsTracker {
 
     // Statistics retrieval
     
-    getPlayerStats(guildId, steamId) {
-        return this.db.getPlayerStatistics(guildId, steamId);
+    getPlayerStats(guildId, serverId, steamId) {
+        return this.db.getPlayerStatistics(guildId, serverId, steamId);
     }
 
-    getTeamStats(guildId, steamIds) {
-        return this.db.getTeamStatistics(guildId, steamIds);
+    getTeamStats(guildId, serverId, steamIds) {
+        return this.db.getTeamStatistics(guildId, serverId, steamIds);
     }
 
-    getServerStats(guildId, days = 7) {
-        return this.db.getServerStatistics(guildId, days);
+    getServerStats(guildId, serverId, days = 7) {
+        return this.db.getServerStatistics(guildId, serverId, days);
     }
 
-    getPlayerSessions(guildId, steamId, limit = 100) {
-        return this.db.getPlayerSessions(guildId, steamId, limit);
+    getPlayerSessions(guildId, serverId, steamId, limit = 100) {
+        return this.db.getPlayerSessions(guildId, serverId, steamId, limit);
     }
 
-    getPlayerDeaths(guildId, steamId, limit = 100) {
-        return this.db.getPlayerDeaths(guildId, steamId, limit);
+    getPlayerDeaths(guildId, serverId, steamId, limit = 100) {
+        return this.db.getPlayerDeaths(guildId, serverId, steamId, limit);
     }
 
-    getAllDeaths(guildId, limit = 1000) {
-        return this.db.getAllDeaths(guildId, limit);
+    getAllDeaths(guildId, serverId, limit = 1000) {
+        return this.db.getAllDeaths(guildId, serverId, limit);
     }
 
-    getChatHistory(guildId, limit = 100) {
-        return this.db.getChatHistory(guildId, limit);
+    getChatHistory(guildId, serverId, limit = 100) {
+        return this.db.getChatHistory(guildId, serverId, limit);
     }
 
-    getPlayerChatHistory(guildId, steamId, limit = 100) {
-        return this.db.getPlayerChatHistory(guildId, steamId, limit);
+    getPlayerChatHistory(guildId, serverId, steamId, limit = 100) {
+        return this.db.getPlayerChatHistory(guildId, serverId, steamId, limit);
     }
 
-    getCommandHistory(guildId, limit = 100) {
-        return this.db.getCommandHistory(guildId, limit);
+    getCommandHistory(guildId, serverId, limit = 100) {
+        return this.db.getCommandHistory(guildId, serverId, limit);
     }
 
     getPlayerColor(steamId) {
         return this.db.getPlayerColor(steamId);
     }
 
-    getReplayData(guildId, startTime, endTime) {
-        return this.db.getRecentPositions(guildId, Math.floor((endTime - startTime) / 60));
+    getReplayData(guildId, serverId, startTime, endTime) {
+        return this.db.getRecentPositions(guildId, serverId, Math.floor((endTime - startTime) / 60));
     }
 
-    getConnectionStats(guildId, startTime, endTime) {
-        return this.db.getConnectionStats(guildId, startTime, endTime);
+    getConnectionStats(guildId, serverId, startTime, endTime) {
+        return this.db.getConnectionStats(guildId, serverId, startTime, endTime);
     }
 
     getDatabaseInfo() {

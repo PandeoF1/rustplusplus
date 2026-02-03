@@ -227,14 +227,14 @@ class StatisticsDatabase {
         return stmt.get(guildId, steamId);
     }
 
-    getPlayerSessions(guildId, steamId, limit = 100) {
+    getPlayerSessions(guildId, serverId, steamId, limit = 100) {
         const stmt = this.db.prepare(`
             SELECT * FROM player_sessions
-            WHERE guild_id = ? AND steam_id = ?
+            WHERE guild_id = ? AND ${serverId ? 'server_id = ? AND' : ''} steam_id = ?
             ORDER BY session_start DESC
             LIMIT ?
         `);
-        return stmt.all(guildId, steamId, limit);
+        return serverId ? stmt.all(guildId, serverId, steamId, limit) : stmt.all(guildId, steamId, limit);
     }
 
     mergeRecentSessions(guildId, mergeGapSeconds = 120, lookbackHours = 48) {
@@ -359,23 +359,23 @@ class StatisticsDatabase {
         return stmt.run(guildId, serverId, steamId, x, y, timestamp, isAlive ? 1 : 0);
     }
 
-    getPlayerPositions(guildId, steamId, startTime, endTime) {
+    getPlayerPositions(guildId, serverId, steamId, startTime, endTime) {
         const stmt = this.db.prepare(`
             SELECT * FROM player_positions
-            WHERE guild_id = ? AND steam_id = ? AND timestamp BETWEEN ? AND ?
+            WHERE guild_id = ? AND ${serverId ? 'server_id = ? AND' : ''} steam_id = ? AND timestamp BETWEEN ? AND ?
             ORDER BY timestamp ASC
         `);
-        return stmt.all(guildId, steamId, startTime, endTime);
+        return serverId ? stmt.all(guildId, serverId, steamId, startTime, endTime) : stmt.all(guildId, steamId, startTime, endTime);
     }
 
-    getRecentPositions(guildId, minutes = 60) {
+    getRecentPositions(guildId, serverId, minutes = 60) {
         const startTime = Math.floor(Date.now() / 1000) - (minutes * 60);
         const stmt = this.db.prepare(`
             SELECT * FROM player_positions
-            WHERE guild_id = ? AND timestamp > ?
+            WHERE guild_id = ? AND ${serverId ? 'server_id = ? AND' : ''} timestamp > ?
             ORDER BY timestamp ASC
         `);
-        return stmt.all(guildId, startTime);
+        return serverId ? stmt.all(guildId, serverId, startTime) : stmt.all(guildId, startTime);
     }
 
     // ==================== PLAYER DEATHS ====================
@@ -389,32 +389,32 @@ class StatisticsDatabase {
         return stmt.run(guildId, serverId, steamId, playerName, x, y, timestamp);
     }
 
-    getPlayerDeaths(guildId, steamId, limit = 100) {
+    getPlayerDeaths(guildId, serverId, steamId, limit = 100) {
         const stmt = this.db.prepare(`
             SELECT * FROM player_deaths
-            WHERE guild_id = ? AND steam_id = ?
+            WHERE guild_id = ? AND ${serverId ? 'server_id = ? AND' : ''} steam_id = ?
             ORDER BY death_time DESC
             LIMIT ?
         `);
-        return stmt.all(guildId, steamId, limit);
+        return serverId ? stmt.all(guildId, serverId, steamId, limit) : stmt.all(guildId, steamId, limit);
     }
 
-    getAllDeaths(guildId, limit = 1000) {
+    getAllDeaths(guildId, serverId, limit = 1000) {
         const stmt = this.db.prepare(`
             SELECT * FROM player_deaths
-            WHERE guild_id = ?
+            WHERE guild_id = ? ${serverId ? 'AND server_id = ?' : ''}
             ORDER BY death_time DESC
             LIMIT ?
         `);
-        return stmt.all(guildId, limit);
+        return serverId ? stmt.all(guildId, serverId, limit) : stmt.all(guildId, limit);
     }
 
-    getTotalDeaths(guildId, steamId) {
+    getTotalDeaths(guildId, serverId, steamId) {
         const stmt = this.db.prepare(`
             SELECT COUNT(*) as count FROM player_deaths
-            WHERE guild_id = ? AND steam_id = ?
+            WHERE guild_id = ? AND ${serverId ? 'server_id = ? AND' : ''} steam_id = ?
         `);
-        return stmt.get(guildId, steamId).count;
+        return serverId ? stmt.get(guildId, serverId, steamId).count : stmt.get(guildId, steamId).count;
     }
 
     // ==================== CHAT HISTORY ====================
@@ -428,24 +428,24 @@ class StatisticsDatabase {
         return stmt.run(guildId, serverId, steamId, playerName, message, timestamp);
     }
 
-    getChatHistory(guildId, limit = 100) {
+    getChatHistory(guildId, serverId, limit = 100) {
         const stmt = this.db.prepare(`
             SELECT * FROM chat_history
-            WHERE guild_id = ?
+            WHERE guild_id = ? ${serverId ? 'AND server_id = ?' : ''}
             ORDER BY timestamp DESC
             LIMIT ?
         `);
-        return stmt.all(guildId, limit);
+        return serverId ? stmt.all(guildId, serverId, limit) : stmt.all(guildId, limit);
     }
 
-    getPlayerChatHistory(guildId, steamId, limit = 100) {
+    getPlayerChatHistory(guildId, serverId, steamId, limit = 100) {
         const stmt = this.db.prepare(`
             SELECT * FROM chat_history
-            WHERE guild_id = ? AND steam_id = ?
+            WHERE guild_id = ? AND ${serverId ? 'server_id = ? AND' : ''} steam_id = ?
             ORDER BY timestamp DESC
             LIMIT ?
         `);
-        return stmt.all(guildId, steamId, limit);
+        return serverId ? stmt.all(guildId, serverId, steamId, limit) : stmt.all(guildId, steamId, limit);
     }
 
     // ==================== COMMAND HISTORY ====================
@@ -459,14 +459,14 @@ class StatisticsDatabase {
         return stmt.run(guildId, serverId, steamId, playerName, command, timestamp);
     }
 
-    getCommandHistory(guildId, limit = 100) {
+    getCommandHistory(guildId, serverId, limit = 100) {
         const stmt = this.db.prepare(`
             SELECT * FROM command_history
-            WHERE guild_id = ?
+            WHERE guild_id = ? ${serverId ? 'AND server_id = ?' : ''}
             ORDER BY timestamp DESC
             LIMIT ?
         `);
-        return stmt.all(guildId, limit);
+        return serverId ? stmt.all(guildId, serverId, limit) : stmt.all(guildId, limit);
     }
 
     // ==================== CONNECTION STATS ====================
@@ -480,13 +480,13 @@ class StatisticsDatabase {
         return stmt.run(guildId, serverId, timestamp, onlinePlayers, maxPlayers, queuedPlayers);
     }
 
-    getConnectionStats(guildId, startTime, endTime) {
+    getConnectionStats(guildId, serverId, startTime, endTime) {
         const stmt = this.db.prepare(`
             SELECT * FROM connection_stats
-            WHERE guild_id = ? AND timestamp BETWEEN ? AND ?
+            WHERE guild_id = ? AND ${serverId ? 'server_id = ? AND' : ''} timestamp BETWEEN ? AND ?
             ORDER BY timestamp ASC
         `);
-        return stmt.all(guildId, startTime, endTime);
+        return serverId ? stmt.all(guildId, serverId, startTime, endTime) : stmt.all(guildId, startTime, endTime);
     }
 
     // ==================== PLAYER COLORS ====================
@@ -518,9 +518,9 @@ class StatisticsDatabase {
 
     // ==================== STATISTICS & ANALYTICS ====================
     
-    getPlayerStatistics(guildId, steamId) {
-        const sessions = this.getPlayerSessions(guildId, steamId, 1000);
-        const deaths = this.getTotalDeaths(guildId, steamId);
+    getPlayerStatistics(guildId, serverId, steamId) {
+        const sessions = this.getPlayerSessions(guildId, serverId, steamId, 1000);
+        const deaths = this.getTotalDeaths(guildId, serverId, steamId);
         
         const now = Math.floor(Date.now() / 1000);
         const completedSessions = sessions.filter(s => !s.is_active);
@@ -555,8 +555,8 @@ class StatisticsDatabase {
         };
     }
 
-    getTeamStatistics(guildId, steamIds) {
-        const stats = steamIds.map(id => this.getPlayerStatistics(guildId, id));
+    getTeamStatistics(guildId, serverId, steamIds) {
+        const stats = steamIds.map(id => this.getPlayerStatistics(guildId, serverId, id));
         
         const totalPlaytime = stats.reduce((sum, s) => sum + s.totalPlaytimeSeconds, 0);
         const totalSessions = stats.reduce((sum, s) => sum + s.totalSessions, 0);
@@ -573,7 +573,7 @@ class StatisticsDatabase {
         };
     }
 
-    getServerStatistics(guildId, days = 7) {
+    getServerStatistics(guildId, serverId, days = 7) {
         const startTime = Math.floor(Date.now() / 1000) - (days * 24 * 3600);
         
         const stmt = this.db.prepare(`
@@ -583,10 +583,10 @@ class StatisticsDatabase {
                 SUM(CASE WHEN duration_seconds IS NOT NULL THEN duration_seconds ELSE 0 END) as total_playtime,
                 AVG(CASE WHEN duration_seconds IS NOT NULL THEN duration_seconds ELSE NULL END) as avg_session
             FROM player_sessions
-            WHERE guild_id = ? AND session_start > ?
+            WHERE guild_id = ? AND ${serverId ? 'server_id = ? AND' : ''} session_start > ?
         `);
         
-        return stmt.get(guildId, startTime);
+        return serverId ? stmt.get(guildId, serverId, startTime) : stmt.get(guildId, startTime);
     }
 
     // ==================== MAINTENANCE & CLEANUP ====================
