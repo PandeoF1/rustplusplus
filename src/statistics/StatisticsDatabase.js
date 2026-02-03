@@ -231,7 +231,7 @@ class StatisticsDatabase {
         if (serverId && serverId !== '') {
             const stmt = this.db.prepare(`
                 SELECT * FROM player_sessions
-                WHERE guild_id = ? AND server_id = ? AND steam_id = ?
+                WHERE guild_id = ? AND (server_id = ? OR server_id IS NULL OR server_id = '') AND steam_id = ?
                 ORDER BY session_start DESC
                 LIMIT ?
             `);
@@ -373,7 +373,7 @@ class StatisticsDatabase {
         if (serverId && serverId !== '') {
             const stmt = this.db.prepare(`
                 SELECT * FROM player_positions
-                WHERE guild_id = ? AND server_id = ? AND steam_id = ? AND timestamp BETWEEN ? AND ?
+                WHERE guild_id = ? AND (server_id = ? OR server_id IS NULL OR server_id = '') AND steam_id = ? AND timestamp BETWEEN ? AND ?
                 ORDER BY timestamp ASC
             `);
             return stmt.all(guildId, serverId, steamId, startTime, endTime);
@@ -392,7 +392,7 @@ class StatisticsDatabase {
         if (serverId && serverId !== '') {
             const stmt = this.db.prepare(`
                 SELECT * FROM player_positions
-                WHERE guild_id = ? AND server_id = ? AND timestamp > ?
+                WHERE guild_id = ? AND (server_id = ? OR server_id IS NULL OR server_id = '') AND timestamp > ?
                 ORDER BY timestamp ASC
             `);
             return stmt.all(guildId, serverId, startTime);
@@ -421,7 +421,7 @@ class StatisticsDatabase {
         if (serverId && serverId !== '') {
             const stmt = this.db.prepare(`
                 SELECT * FROM player_deaths
-                WHERE guild_id = ? AND server_id = ? AND steam_id = ?
+                WHERE guild_id = ? AND (server_id = ? OR server_id IS NULL OR server_id = '') AND steam_id = ?
                 ORDER BY death_time DESC
                 LIMIT ?
             `);
@@ -441,7 +441,7 @@ class StatisticsDatabase {
         if (serverId && serverId !== '') {
             const stmt = this.db.prepare(`
                 SELECT * FROM player_deaths
-                WHERE guild_id = ? AND server_id = ?
+                WHERE guild_id = ? AND (server_id = ? OR server_id IS NULL OR server_id = '')
                 ORDER BY death_time DESC
                 LIMIT ?
             `);
@@ -461,7 +461,7 @@ class StatisticsDatabase {
         if (serverId && serverId !== '') {
             const stmt = this.db.prepare(`
                 SELECT COUNT(*) as count FROM player_deaths
-                WHERE guild_id = ? AND server_id = ? AND steam_id = ?
+                WHERE guild_id = ? AND (server_id = ? OR server_id IS NULL OR server_id = '') AND steam_id = ?
             `);
             return stmt.get(guildId, serverId, steamId).count;
         } else {
@@ -488,7 +488,7 @@ class StatisticsDatabase {
         if (serverId && serverId !== '') {
             const stmt = this.db.prepare(`
                 SELECT * FROM chat_history
-                WHERE guild_id = ? AND server_id = ?
+                WHERE guild_id = ? AND (server_id = ? OR server_id IS NULL OR server_id = '')
                 ORDER BY timestamp DESC
                 LIMIT ?
             `);
@@ -508,7 +508,7 @@ class StatisticsDatabase {
         if (serverId && serverId !== '') {
             const stmt = this.db.prepare(`
                 SELECT * FROM chat_history
-                WHERE guild_id = ? AND server_id = ? AND steam_id = ?
+                WHERE guild_id = ? AND (server_id = ? OR server_id IS NULL OR server_id = '') AND steam_id = ?
                 ORDER BY timestamp DESC
                 LIMIT ?
             `);
@@ -539,7 +539,7 @@ class StatisticsDatabase {
         if (serverId && serverId !== '') {
             const stmt = this.db.prepare(`
                 SELECT * FROM command_history
-                WHERE guild_id = ? AND server_id = ?
+                WHERE guild_id = ? AND (server_id = ? OR server_id IS NULL OR server_id = '')
                 ORDER BY timestamp DESC
                 LIMIT ?
             `);
@@ -570,7 +570,7 @@ class StatisticsDatabase {
         if (serverId && serverId !== '') {
             const stmt = this.db.prepare(`
                 SELECT * FROM connection_stats
-                WHERE guild_id = ? AND server_id = ? AND timestamp BETWEEN ? AND ?
+                WHERE guild_id = ? AND (server_id = ? OR server_id IS NULL OR server_id = '') AND timestamp BETWEEN ? AND ?
                 ORDER BY timestamp ASC
             `);
             return stmt.all(guildId, serverId, startTime, endTime);
@@ -679,7 +679,7 @@ class StatisticsDatabase {
                     SUM(CASE WHEN duration_seconds IS NOT NULL THEN duration_seconds ELSE 0 END) as total_playtime,
                     AVG(CASE WHEN duration_seconds IS NOT NULL THEN duration_seconds ELSE NULL END) as avg_session
                 FROM player_sessions
-                WHERE guild_id = ? AND server_id = ? AND session_start > ?
+                WHERE guild_id = ? AND (server_id = ? OR server_id IS NULL OR server_id = '') AND session_start > ?
             `);
             return stmt.get(guildId, serverId, startTime);
         } else {
