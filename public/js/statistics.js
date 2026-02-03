@@ -4,7 +4,7 @@ class StatisticsManager {
     constructor(apiClient, guildId, serverId = null) {
         this.apiClient = apiClient;
         this.guildId = guildId;
-        this.serverId = serverId;
+        this.serverId = serverId; // Will be set from serverData, required for filtering
         this.currentView = 'overview';
         this.selectedPlayer = null;
         this.charts = {};
@@ -28,6 +28,12 @@ class StatisticsManager {
     }
 
     async openStatisticsPanel() {
+        // Ensure we have serverId before opening
+        if (!this.serverId) {
+            console.error('[Statistics] Cannot open panel - serverId not available yet');
+            return;
+        }
+        
         const existing = document.getElementById('statisticsPanel');
         if (existing) {
             existing.style.display = 'flex';
@@ -374,10 +380,9 @@ class StatisticsManager {
 
             const steamIds = teamData.players.map(p => p.steamId);
             const defaultHours = 168; // 7 days default
-            const serverIdParam = this.serverId ? `&serverId=${this.serverId}` : '';
             const [teamStats, connectionStats] = await Promise.all([
-                this.apiClient.get(`/api/statistics/team/${this.guildId}?steamIds=${steamIds.join(',')}${serverIdParam}`),
-                this.apiClient.get(`/api/statistics/connections/${this.guildId}?hours=${defaultHours}${serverIdParam}`)
+                this.apiClient.get(`/api/statistics/team/${this.guildId}?steamIds=${steamIds.join(',')}&serverId=${this.serverId}`),
+                this.apiClient.get(`/api/statistics/connections/${this.guildId}?hours=${defaultHours}&serverId=${this.serverId}`)
             ]);
 
             const body = document.getElementById('statisticsBody');
@@ -456,8 +461,7 @@ class StatisticsManager {
     async updatePopulationTimeline() {
         try {
             const hours = parseInt(document.getElementById('populationTimeRange')?.value || '168');
-            const serverIdParam = this.serverId ? `&serverId=${this.serverId}` : '';
-            const connectionStats = await this.apiClient.get(`/api/statistics/connections/${this.guildId}?hours=${hours}${serverIdParam}`);
+            const connectionStats = await this.apiClient.get(`/api/statistics/connections/${this.guildId}?hours=${hours}&serverId=${this.serverId}`);
             this.renderPopulationTimeline(connectionStats);
         } catch (error) {
             console.error('Error updating population timeline:', error);
@@ -1510,9 +1514,8 @@ class StatisticsManager {
 
         const timeRange = document.getElementById('timeRangeSelect')?.value || '168';
         const steamIds = teamData.players.map(p => p.steamId).join(',');
-        const serverIdParam = this.serverId ? `&serverId=${this.serverId}` : '';
         
-        let url = `/api/statistics/sessions/${this.guildId}?steamIds=${steamIds}${serverIdParam}`;
+        let url = `/api/statistics/sessions/${this.guildId}?steamIds=${steamIds}&serverId=${this.serverId}`;
         if (timeRange !== 'all') {
             // Add time-based filtering to get ALL sessions in the range
             const hours = parseInt(timeRange);

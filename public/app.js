@@ -362,9 +362,12 @@ class RustPlusWebUI {
             const firstUpdate = !this.serverData;
             this.serverData = data;
             
-            // Update serverId in statistics manager
+            // Update serverId in statistics manager and enable stats button once we have server data
             if (this.statisticsManager && data.serverId) {
                 this.statisticsManager.serverId = data.serverId;
+                // Enable statistics button now that we have serverId
+                const statsBtn = document.getElementById('statsButton');
+                if (statsBtn) statsBtn.disabled = false;
             }
 
             if ((firstUpdate || !this.worldRect) && this.mapImage && this.serverData.info) {
@@ -668,16 +671,16 @@ class RustPlusWebUI {
         // Initialize statistics manager for this guild
         if (this.statisticsManager) {
             this.statisticsManager.guildId = guildId;
-            this.statisticsManager.serverId = null; // Will be updated when serverData arrives
+            this.statisticsManager.serverId = this.serverData?.serverId || null;
             this.statisticsManager.authManager = this.authManager; // Share auth manager
         } else {
-            this.statisticsManager = new StatisticsManager(this.apiClient, guildId, null);
+            this.statisticsManager = new StatisticsManager(this.apiClient, guildId, this.serverData?.serverId || null);
             this.statisticsManager.authManager = this.authManager; // Share auth manager
         }
         
-        // Enable statistics button
+        // Enable statistics button only if we already have serverId from serverData
         const statsBtn = document.getElementById('statsButton');
-        if (statsBtn) statsBtn.disabled = false;
+        if (statsBtn) statsBtn.disabled = !this.serverData?.serverId;
         
         // Load player colors
         this.loadPlayerColors();
@@ -729,9 +732,8 @@ class RustPlusWebUI {
         try {
             const hoursAgo = this.deathMarkersTimeRange;
             const startTime = Math.floor(Date.now() / 1000) - (hoursAgo * 3600);
-            const serverIdParam = this.serverData?.serverId ? `&serverId=${this.serverData.serverId}` : '';
             
-            const response = await fetch(`/api/statistics/deaths/${this.currentGuildId}?startTime=${startTime}${serverIdParam}`);
+            const response = await fetch(`/api/statistics/deaths/${this.currentGuildId}?startTime=${startTime}&serverId=${this.serverData.serverId}`);
             if (response.ok) {
                 const deaths = await response.json();
                 const now = Date.now();
