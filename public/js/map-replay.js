@@ -12,13 +12,36 @@ class MapReplay {
         this.playbackSpeed = 1;
         this.replayInterval = null;
         this.playerTrails = {}; // Store trail history for each player
-        this.maxTrailLength = 500; // Maximum points per trail
+        this.maxTrailLength = 500; // Base maximum points per trail (used when fade is active)
         this.trailFadeIntensity = 0.7; // 0 = no fade (solid), 1 = full fade
         this.deathMarkers = []; // Store all death markers from replay data
         this.minimapDeathMarkers = []; // Store death markers for minimap with timestamps
         this.controlsHeight = 80; // Height of replay control bar
         this.isDraggingProgress = false;
         this.controlsVisible = false;
+    }
+    
+    // Calculate dynamic trail length based on fade intensity
+    getMaxTrailLength() {
+        if (this.trailFadeIntensity === 0) {
+            // No fade = infinite trails (use a very large number)
+            return 10000;
+        } else {
+            // With fade, limit based on when trails become too transparent
+            // At minimum alpha (fadeProgress * intensity), trails should be cut off
+            // The formula: we want alpha to reach ~0.1 (10% opacity) at the oldest point
+            // alpha = fadeProgress * intensity + (1 - intensity) * 0.7
+            // When fadeProgress = 0 (oldest), we get alpha = (1 - intensity) * 0.7
+            // We want this to be around 0.1, so:
+            // If intensity is high (close to 1), trails fade quickly -> shorter trails work
+            // If intensity is low (close to 0), trails barely fade -> longer trails needed
+            
+            // Scale trail length inversely with fade intensity
+            // High fade (1.0) = 200 points, Low fade (0.1) = 2000 points
+            const baseLength = 200;
+            const maxLength = 2000;
+            return Math.floor(baseLength + (maxLength - baseLength) * (1 - this.trailFadeIntensity));
+        }
     }
 
     async setReplayData(replayData) {
@@ -172,6 +195,16 @@ class MapReplay {
                 trailFadeValue.style.color = 'white';
             }
             
+            // Trim trails to new max length if fade increased
+            const maxLength = this.getMaxTrailLength();
+            Object.keys(this.playerTrails).forEach(steamId => {
+                const trail = this.playerTrails[steamId];
+                if (trail.length > maxLength) {
+                    // Remove oldest points to fit new max length
+                    this.playerTrails[steamId] = trail.slice(trail.length - maxLength);
+                }
+            });
+            
             // Trigger re-render
             this.mapRenderer.dirtyDynamic = true;
             this.mapRenderer.needsRender = true;
@@ -295,8 +328,9 @@ class MapReplay {
                 }
                 this.playerTrails[steamId].push({ x: lastPos.x, y: lastPos.y, timestamp: this.currentTime });
                 
-                // Limit trail length
-                if (this.playerTrails[steamId].length > this.maxTrailLength) {
+                // Limit trail length dynamically based on fade setting
+                const maxLength = this.getMaxTrailLength();
+                if (this.playerTrails[steamId].length > maxLength) {
                     this.playerTrails[steamId].shift();
                 }
             }
