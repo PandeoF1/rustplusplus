@@ -487,7 +487,7 @@ class StatisticsManager {
 
             const steamIds = teamData.players.map(p => p.steamId);
             const playerStats = await Promise.all(
-                steamIds.map(id => this.apiClient.get(`/api/statistics/player/${this.guildId}/${id}`))
+                steamIds.map(id => this.apiClient.get(`/api/statistics/player/${this.guildId}/${id}?serverId=${this.serverId}`))
             );
 
             const body = document.getElementById('statisticsBody');
@@ -548,7 +548,7 @@ class StatisticsManager {
 
     async viewPlayerDetails(steamId, playerName) {
         try {
-            const data = await this.apiClient.get(`/api/statistics/player/${this.guildId}/${steamId}`);
+            const data = await this.apiClient.get(`/api/statistics/player/${this.guildId}/${steamId}?serverId=${this.serverId}`);
             
             // Helper function to get session duration (including active sessions)
             const now = Math.floor(Date.now() / 1000);
@@ -1070,7 +1070,7 @@ class StatisticsManager {
         status.innerHTML = '<div class="loading">Loading replay data...</div>';
         
         try {
-            const replayData = await this.apiClient.get(`/api/statistics/replay/${this.guildId}?minutes=${minutes}`);
+            const replayData = await this.apiClient.get(`/api/statistics/replay/${this.guildId}?minutes=${minutes}&serverId=${this.serverId}`);
             
             const playerCount = Object.keys(replayData).length;
             const totalPositions = Object.values(replayData).reduce((sum, p) => sum + p.positions.length, 0);

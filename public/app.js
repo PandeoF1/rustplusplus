@@ -671,16 +671,16 @@ class RustPlusWebUI {
         // Initialize statistics manager for this guild
         if (this.statisticsManager) {
             this.statisticsManager.guildId = guildId;
-            this.statisticsManager.serverId = this.serverData?.serverId || null;
+            this.statisticsManager.serverId = null;
             this.statisticsManager.authManager = this.authManager; // Share auth manager
         } else {
-            this.statisticsManager = new StatisticsManager(this.apiClient, guildId, this.serverData?.serverId || null);
+            this.statisticsManager = new StatisticsManager(this.apiClient, guildId, null);
             this.statisticsManager.authManager = this.authManager; // Share auth manager
         }
         
-        // Enable statistics button only if we already have serverId from serverData
+        // Disable statistics button until we receive serverId from serverUpdate
         const statsBtn = document.getElementById('statsButton');
-        if (statsBtn) statsBtn.disabled = !this.serverData?.serverId;
+        if (statsBtn) statsBtn.disabled = true;
         
         // Load player colors
         this.loadPlayerColors();
