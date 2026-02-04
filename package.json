@@ -1,6 +1,6 @@
 {
     "name": "rustplusplus",
-    "version": "1.23.2",
+    "version": "1.23.3",
     "description": "A NodeJS Discord Bot that uses the rustplus.js library to utilize the power of the Rust+ Companion App with additional Quality-of-Life features.",
     "main": "index.ts",
     "scripts": {
@@ -10,14 +10,14 @@
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/alexemanuelol/rustplusplus.git"
+        "url": "https://github.com/faithix/rustplusplus.git"
     },
-    "author": "Alexemanuelol",
+    "author": "FaiThiX forked from Alexemanuelol",
     "license": "SEE LICENSE IN LICENSE",
     "bugs": {
-        "url": "https://github.com/alexemanuelol/rustplusplus/issues"
+        "url": "https://github.com/faithix/rustplusplus/issues"
     },
-    "homepage": "https://github.com/alexemanuelol/rustplusplus#readme",
+    "homepage": "https://github.com/faithix/rustplusplus#readme",
     "dependencies": {
         "@discordjs/rest": "^2.5.1",
         "@discordjs/voice": "^0.18.0",
