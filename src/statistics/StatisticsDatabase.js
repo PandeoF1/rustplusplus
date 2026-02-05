@@ -343,6 +343,21 @@ class StatisticsDatabase {
         return stmt.all(guildId);
     }
 
+    // Close sessions that have been active for more than maxHours (default 24 hours)
+    // This is a safety mechanism to prevent infinitely active sessions
+    closeStaleActiveSessions(maxHours = 24) {
+        const now = Math.floor(Date.now() / 1000);
+        const cutoff = now - (maxHours * 3600);
+        
+        const stmt = this.db.prepare(`
+            UPDATE player_sessions
+            SET session_end = ?, duration_seconds = ? - session_start, is_active = 0
+            WHERE is_active = 1 AND session_start < ?
+        `);
+        const result = stmt.run(now, now, cutoff);
+        return result.changes;
+    }
+
     getLastActivityTimestamp(guildId) {
         const connStmt = this.db.prepare(`
             SELECT MAX(timestamp) as ts FROM connection_stats WHERE guild_id = ?
@@ -790,6 +805,13 @@ class StatisticsDatabase {
         const maxRecords = 5000000; // 5 million records max per table (for 1 month of positions)
 
         let totalDeleted = 0;
+
+        // Close stale active sessions (sessions active for more than 24 hours)
+        const staleSessions = this.closeStaleActiveSessions(24);
+        if (staleSessions > 0) {
+            console.log(`[Statistics] Maintenance closed ${staleSessions} stale active sessions`);
+            totalDeleted += staleSessions;
+        }
 
         // Keep all position records within 1 month (no deletion by time)
         // Only limit by record count if table grows too large

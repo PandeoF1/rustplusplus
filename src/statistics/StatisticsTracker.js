@@ -40,6 +40,11 @@ class StatisticsTracker {
         setInterval(() => {
             this.checkAndStartTracking();
         }, 5000);
+
+        // Periodic session validation - runs every 2 minutes to catch orphaned sessions
+        setInterval(() => {
+            this.periodicSessionValidation();
+        }, 120000); // 2 minutes
     }
 
     checkAndStartTracking() {
@@ -86,6 +91,9 @@ class StatisticsTracker {
         if (this.trackingIntervals[guildId]) {
             clearInterval(this.trackingIntervals[guildId]);
             delete this.trackingIntervals[guildId];
+
+            // Close all active sessions when stopping tracking (bot disconnect)
+            this.endAllActiveSessions(guildId);
 
             this.client.log(this.client.intlGet(null, 'infoCap'), `Statistics: stopped tracking for guild ${guildId}`);
         }
@@ -171,6 +179,9 @@ class StatisticsTracker {
 
                 // Update last known states
                 this.lastKnownPlayerStates[guildId] = currentPlayers;
+
+                // Validate active sessions - close any that don't have online players
+                this.validateActiveSessions(guildId, currentPlayers);
             }
         } catch (error) {
             this.client.log(this.client.intlGet(null, 'errorCap'), `Statistics: error tracking guild ${guildId}: ${error}`, 'error');
@@ -214,16 +225,22 @@ class StatisticsTracker {
         const onlineIds = new Set(players.filter(p => p.isOnline).map(p => p.steamId));
         const activeSessions = this.db.getAllActiveSessions(guildId);
 
+        // Close sessions for players who are no longer online
         activeSessions.forEach(session => {
             if (!onlineIds.has(session.steam_id)) {
+                this.client.log(this.client.intlGet(null, 'infoCap'), 
+                    `Statistics: ending session for offline player ${session.steam_id} after restart`);
                 this.db.endPlayerSession(guildId, session.steam_id);
             }
         });
 
+        // Start sessions for online players without active sessions
         players.forEach(player => {
             if (!player.isOnline || !player.steamId) return;
             const activeSession = this.db.getActiveSession(guildId, player.steamId);
             if (!activeSession) {
+                this.client.log(this.client.intlGet(null, 'infoCap'), 
+                    `Statistics: starting session for online player ${player.name} (${player.steamId}) after restart`);
                 this.db.startPlayerSession(guildId, serverId, player.steamId, player.name);
             }
         });
@@ -241,6 +258,54 @@ class StatisticsTracker {
         activeSessions.forEach(session => {
             this.db.endPlayerSession(guildId, session.steam_id);
         });
+    }
+
+    validateActiveSessions(guildId, currentPlayers) {
+        const activeSessions = this.db.getAllActiveSessions(guildId);
+        const onlinePlayerIds = new Set(
+            Object.values(currentPlayers)
+                .filter(p => p.isOnline)
+                .map(p => p.steamId)
+        );
+
+        activeSessions.forEach(session => {
+            // Close session if player is not online
+            if (!onlinePlayerIds.has(session.steam_id)) {
+                this.client.log(this.client.intlGet(null, 'infoCap'), 
+                    `Statistics: closing orphaned session for ${session.steam_id}`);
+                this.db.endPlayerSession(guildId, session.steam_id);
+            }
+        });
+    }
+
+    periodicSessionValidation() {
+        // Validate sessions for all active guilds
+        for (const [guildId, rustplus] of Object.entries(this.client.rustplusInstances)) {
+            if (!rustplus || !rustplus.isOperational || !rustplus.team) continue;
+
+            const activeSessions = this.db.getAllActiveSessions(guildId);
+            if (activeSessions.length === 0) continue;
+
+            const onlinePlayerIds = new Set(
+                rustplus.team.players
+                    .filter(p => p.isOnline)
+                    .map(p => p.steamId)
+            );
+
+            activeSessions.forEach(session => {
+                // Close orphaned sessions (player not in team or not online)
+                if (!onlinePlayerIds.has(session.steam_id)) {
+                    const sessionAge = Math.floor(Date.now() / 1000) - session.session_start;
+                    // Only close if session has been active for more than 5 minutes
+                    // This prevents closing during temporary team updates
+                    if (sessionAge > 300) {
+                        this.client.log(this.client.intlGet(null, 'infoCap'), 
+                            `Statistics: periodic validation closed orphaned session for ${session.steam_id} (age: ${Math.floor(sessionAge / 60)}m)`);
+                        this.db.endPlayerSession(guildId, session.steam_id);
+                    }
+                }
+            });
+        }
     }
 
     // Public methods for manual tracking
