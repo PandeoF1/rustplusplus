@@ -1242,7 +1242,7 @@ class StatisticsManager {
         status.innerHTML = '<div class="loading">Loading replay data...</div>';
 
         try {
-            const replayData = await this.apiClient.get(`/ api / statistics / replay / ${this.guildId}?minutes = ${minutes}& serverId=${this.serverId} `);
+            const replayData = await this.apiClient.get(`/api/statistics/replay/${this.guildId}?minutes=${minutes}&serverId=${this.serverId}`);
 
             const playerCount = Object.keys(replayData).length;
             const totalPositions = Object.values(replayData).reduce((sum, p) => sum + p.positions.length, 0);
@@ -1253,7 +1253,7 @@ class StatisticsManager {
                 return;
             }
 
-            status.innerHTML = `< div class="success" >✓ Loaded ${totalPositions.toLocaleString()} positions for ${playerCount} players</div > `;
+            status.innerHTML = `<div class="success">✓ Loaded ${totalPositions.toLocaleString()} positions for ${playerCount} players</div>`;
 
             // Start replay on main map
             if (window.rustplusUI) {
@@ -1268,7 +1268,7 @@ class StatisticsManager {
 
             btn.disabled = false;
         } catch (error) {
-            status.innerHTML = `< div class="error" > Error loading replay: ${error.message}</div > `;
+            status.innerHTML = `<div class="error">Error loading replay: ${error.message}</div>`;
             btn.disabled = false;
             console.error('Error loading replay:', error);
         }
