@@ -190,12 +190,14 @@ class DiscordBot extends Discord.Client {
                 } break;
             }
         });
+    }
 
-        /* Start the Web UI server if enabled */
-        if (Config.webui.enabled) {
-            this.webServer = new WebServer(this, Config.webui.port);
-            this.webServer.start();
-        }
+    startWebUi() {
+        if (!Config.webui.enabled) return;
+        if (this.webServer) return;
+
+        this.webServer = new WebServer(this, Config.webui.port);
+        this.webServer.start();
     }
 
     log(title, text, level = 'info') {
