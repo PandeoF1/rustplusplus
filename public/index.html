@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rust++ WebUI</title>
+    <title data-i18n="header.title">Rust++</title>
     <link rel="stylesheet" href="style.css">
     <style>
         /* Performance hints for canvas rendering */
@@ -13,119 +14,351 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <header>
-            <h1>Rust++ WebUI</h1>
-            <div class="server-selector">
-                <label for="serverSelect">Select Server:</label>
-                <select id="serverSelect">
-                    <option value="">Loading...</option>
-                </select>
+            <div class="header-left">
+                <h1 data-i18n="header.title">Rust++</h1>
+                <div class="header-separator"></div>
+                <nav class="header-nav">
+                    <button id="shopsButton" class="header-nav-btn" data-i18n="header.shops">
+                        SHOPS BROWSER
+                    </button>
+                    <button id="switchesNavBtn" class="header-nav-btn" data-i18n="header.switches">
+                        SMART SWITCHES
+                    </button>
+                    <button id="trackersNavBtn" class="header-nav-btn" data-i18n="header.trackers">
+                        TRACKERS
+                    </button>
+                    <!-- Future tabs here -->
+                </nav>
+            </div>
+
+            <!-- Right: Notifications and Stats -->
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <!-- Notification Center -->
+                <div class="notification-container" style="position: relative;">
+                    <button id="notificationBtn" class="notification-btn" title="Notifications">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                        </svg>
+                        <span id="notificationBadge" class="notification-badge" style="display: none;">0</span>
+                    </button>
+
+                    <div id="notificationDropdown" class="notification-dropdown">
+                        <!-- Header & List -->
+                        <div id="notificationListView">
+                            <div class="notification-header">
+                                <h3 data-i18n="notifications.title">Notifications</h3>
+                                <div class="notification-header-actions">
+                                    <button id="markAllReadBtn" class="mark-all-read-btn" style="display: none;">
+                                        <span data-i18n="notifications.markAllRead">Mark all as read</span>
+                                    </button>
+                                    <button id="notificationSettingsBtn" class="settings-icon-btn" title="Settings">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <path
+                                                d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                                            <circle cx="12" cy="12" r="3" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <ul id="notificationList" class="notification-list">
+                                <!-- Items will be injected here -->
+                            </ul>
+                        </div>
+
+                        <!-- Settings (Collapsible Bottom Section) -->
+                        <div id="notificationSettingsContainer" class="notification-settings-container">
+                            <div class="settings-view-header" data-i18n="notifications.settings">
+                                Notification Settings
+                            </div>
+                            <div class="settings-view-body">
+                                <div class="settings-section">
+                                    <h4 data-i18n="notifications.category.cargo">Cargo Ship</h4>
+                                    <label><input type="checkbox" id="notify_cargoShipDetectedSetting"> <span
+                                            data-i18n="notifications.type.detected">Detected</span></label>
+                                    <label><input type="checkbox" id="notify_cargoShipDockingAtHarborSetting"> <span
+                                            data-i18n="notifications.type.docking">Docking</span></label>
+                                    <label><input type="checkbox" id="notify_cargoShipEgressSetting"> <span
+                                            data-i18n="notifications.type.egress">Egress</span></label>
+                                    <label><input type="checkbox" id="notify_cargoShipLeftSetting"> <span
+                                            data-i18n="notifications.type.left">Left</span></label>
+                                </div>
+
+                                <div class="settings-section">
+                                    <h4 data-i18n="notifications.category.heli">Patrol Heli</h4>
+                                    <label><input type="checkbox" id="notify_patrolHelicopterDetectedSetting"> <span
+                                            data-i18n="notifications.type.detected">Detected</span></label>
+                                    <label><input type="checkbox" id="notify_patrolHelicopterLeftSetting"> <span
+                                            data-i18n="notifications.type.left">Left</span></label>
+                                    <label><input type="checkbox" id="notify_patrolHelicopterDestroyedSetting"> <span
+                                            data-i18n="notifications.type.destroyed">Destroyed</span></label>
+                                </div>
+
+                                <div class="settings-section">
+                                    <h4 data-i18n="notifications.category.oil_rig">Oil Rig</h4>
+                                    <label><input type="checkbox" id="notify_lockedCrateOilRigUnlockedSetting"> <span
+                                            data-i18n="notifications.type.crate">Locked Crate</span></label>
+                                    <label><input type="checkbox" id="notify_heavyScientistCalledSetting"> <span
+                                            data-i18n="notifications.type.scientists">Heavies Called</span></label>
+                                </div>
+
+                                <div class="settings-section">
+                                    <h4 data-i18n="notifications.category.vendor">Traveling Vendor</h4>
+                                    <label><input type="checkbox" id="notify_travelingVendorDetectedSetting"> <span
+                                            data-i18n="notifications.type.detected">Detected</span></label>
+                                    <label><input type="checkbox" id="notify_travelingVendorHaltedSetting"> <span
+                                            data-i18n="notifications.type.halted">Halted</span></label>
+                                    <label><input type="checkbox" id="notify_travelingVendorLeftSetting"> <span
+                                            data-i18n="notifications.type.left">Left</span></label>
+                                </div>
+
+                                <div class="settings-section">
+                                    <h4 data-i18n="notifications.category.other">Other Events</h4>
+                                    <label><input type="checkbox" id="notify_chinook47DetectedSetting"> <span
+                                            data-i18n="notifications.type.chinook">Chinook</span></label>
+                                    <label><input type="checkbox" id="notify_vendingMachineDetectedSetting"> <span
+                                            data-i18n="notifications.type.vending">New Shop</span></label>
+                                    <label><input type="checkbox" id="notify_raid"> <span
+                                            data-i18n="notifications.filter.raid">Raids (FCM)</span></label>
+                                    <label><input type="checkbox" id="notify_death"> <span
+                                            data-i18n="notifications.filter.death">Deaths</span></label>
+                                </div>
+                            </div>
+                            <div class="settings-view-footer">
+                                <button id="saveNotificationSettings" class="settings-btn save">Save</button>
+                                <button id="cancelNotificationSettings" class="settings-btn cancel">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Statistics Button -->
+                <button id="statsButton" class="stats-button" disabled>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="20" x2="18" y2="10"></line>
+                        <line x1="12" y1="20" x2="12" y2="4"></line>
+                        <line x1="6" y1="20" x2="6" y2="14"></line>
+                    </svg>
+                    <span data-i18n="stats.button">Stats</span>
+                </button>
             </div>
         </header>
 
         <div class="content">
             <aside class="sidebar">
-                <div class="info-panel">
-                    <h2>Server Info</h2>
-                    <div id="serverInfo">
-                        <p>Select a server...</p>
-                    </div>
-                </div>
+                <nav class="sidebar-nav">
+                    <button class="nav-btn active" data-view="view-dashboard" data-i18n="sidebar.dashboard">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="7" height="9" rx="1" />
+                            <rect x="14" y="3" width="7" height="5" rx="1" />
+                            <rect x="14" y="12" width="7" height="9" rx="1" />
+                            <rect x="3" y="16" width="7" height="5" rx="1" />
+                        </svg>
+                        Dashboard
+                    </button>
+                    <button class="nav-btn" data-view="view-settings" data-i18n="sidebar.settings">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path
+                                d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                            <circle cx="12" cy="12" r="3" />
+                        </svg>
+                        Settings
+                    </button>
+                </nav>
 
-                <div class="controls-panel">
-                    <h2>Map Controls</h2>
-                    <div class="control-group">
-                        <h3>Layers</h3>
-                        <label><input type="checkbox" id="showPlayers" checked> Player Positions</label>
-                        <label><input type="checkbox" id="showPlayerNames" checked> Player Names</label>
-                        <label><input type="checkbox" id="showTrails" checked> Player Trails</label>
-                        <div id="trailDurationConfig" style="margin: 8px 0 8px 20px; padding: 8px; background: var(--bg-primary); border-radius: 4px;">
-                            <label style="display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 5px;">Trail Duration: <span id="trailDurationValue">10</span> minutes</label>
-                            <input type="range" id="trailDurationSlider" min="1" max="30" value="10" style="width: 100%; height: 6px; background: var(--bg-secondary); border-radius: 3px; outline: none; -webkit-appearance: none;">
-                            <style>
-                                #trailDurationSlider::-webkit-slider-thumb {
-                                    -webkit-appearance: none;
-                                    appearance: none;
-                                    width: 16px;
-                                    height: 16px;
-                                    background: var(--accent);
-                                    cursor: pointer;
-                                    border-radius: 50%;
-                                }
-                                #trailDurationSlider::-moz-range-thumb {
-                                    width: 16px;
-                                    height: 16px;
-                                    background: var(--accent);
-                                    cursor: pointer;
-                                    border-radius: 50%;
-                                    border: none;
-                                }
-                            </style>
+                <div id="view-dashboard" class="sidebar-view active">
+                    <div class="team-panel">
+                        <h2 data-i18n="team.title">Team Members</h2>
+                        <div id="teamList"></div>
+                    </div>
+
+                    <div class="events-panel">
+                        <h2 data-i18n="events.title">Recent Events</h2>
+                        <div id="eventsList"></div>
+                    </div>
+
+                    <div class="info-panel">
+                        <h2 data-i18n="sidebar.serverInfo">Server Info</h2>
+                        <div id="serverInfo">
+                            <p data-i18n="sidebar.selectServerMsg">Select a server...</p>
                         </div>
-                        <label><input type="checkbox" id="showMonuments" checked> Monuments</label>
-                        <label><input type="checkbox" id="showGrid" checked> Grid</label>
-                        <label><input type="checkbox" id="showMarkers"> Custom Markers</label>
-                        <label><input type="checkbox" id="showVendingMachines"> Vending Machines</label>
-                        <label><input type="checkbox" id="showEvents"> Events (Cargo/Heli)</label>
-                        <label><input type="checkbox" id="showRadZones"> Rad Zones</label>
-                        <label><input type="checkbox" id="showDeathMarkers"> Death Markers (24h)</label>
-                    </div>
-                    <div class="control-group" id="deathMarkersConfig" style="display: none; margin-top: 10px; padding: 10px; background: var(--bg-primary); border-radius: 4px;">
-                        <h4 style="margin: 0 0 8px 0; font-size: 12px; color: var(--text-secondary);">Death Markers Time Range:</h4>
-                        <select id="deathMarkersTimeRange" style="width: 100%; padding: 5px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px;">
-                            <option value="1">Last 1 hour</option>
-                            <option value="3">Last 3 hours</option>
-                            <option value="6">Last 6 hours</option>
-                            <option value="12">Last 12 hours</option>
-                            <option value="24" selected>Last 24 hours</option>
-                            <option value="48">Last 2 days</option>
-                            <option value="168">Last 7 days</option>
-                            <option value="720">Last 30 days</option>
-                        </select>
-                        <button id="refreshDeathMarkers" style="width: 100%; margin-top: 8px; padding: 6px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">🔄 Refresh Deaths</button>
-                    </div>
-                </div>
-
-                <div class="minimap-panel">
-                    <h2>Minimap</h2>
-                    <div id="minimapContainer" style="text-align: center; margin-bottom: 10px;">
-                        <canvas id="minimapCanvas" style="border: 2px solid var(--accent); border-radius: 4px; max-width: 100%; image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges;"></canvas>
-                    </div>
-                    <div class="control-group">
-                        <label for="followPlayer">Follow Player:</label>
-                        <select id="followPlayer" style="width: 100%; padding: 5px; margin: 5px 0; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px;">
-                            <option value="">Auto-follow</option>
-                        </select>
-                        <div style="display: flex; gap: 5px; margin: 10px 0;">
-                            <button id="minimapZoomIn" style="flex: 1; padding: 6px; background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; cursor: pointer;">🔍+</button>
-                            <button id="minimapZoomOut" style="flex: 1; padding: 6px; background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; cursor: pointer;">🔍-</button>
-                            <button id="minimapReset" style="flex: 1; padding: 6px; background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; cursor: pointer;">⟲</button>
+                        <div class="info-panel">
+                            <h2 data-i18n="sidebar.serverInfo">Server Info</h2>
+                            <div id="serverInfo">
+                            </div>
                         </div>
-                        <label style="display: block; padding: 8px 0;"><input type="checkbox" id="hideMainMap"> Hide Main Map (PiP only)</label>
-                        <button id="pipButton" style="width: 100%; padding: 8px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">📺 Picture-in-Picture</button>
-                        <p style="font-size: 11px; color: var(--text-secondary); margin-top: 5px;">💡 Minimap: Scroll to zoom, right-drag to pan</p>
+
+
+
+
+
+                        <div class="minimap-panel">
+                            <h2 data-i18n="minimap.title">Minimap</h2>
+                            <div id="minimapContainer" style="text-align: center; margin-bottom: 10px;">
+                                <canvas id="minimapCanvas"
+                                    style="border: 2px solid var(--accent); border-radius: 4px; max-width: 100%; image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges;"></canvas>
+                            </div>
+                            <div class="control-group">
+                                <label for="followPlayer" data-i18n="minimap.follow">Follow Player:</label>
+                                <select id="followPlayer"
+                                    style="width: 100%; padding: 5px; margin: 5px 0; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px;">
+                                    <option value="" data-i18n="minimap.autoFollow">Auto-follow</option>
+                                </select>
+                                <div style="display: flex; gap: 5px; margin: 10px 0;">
+                                    <button id="minimapZoomIn"
+                                        style="flex: 1; padding: 6px; background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; cursor: pointer;">🔍+</button>
+                                    <button id="minimapZoomOut"
+                                        style="flex: 1; padding: 6px; background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; cursor: pointer;">🔍-</button>
+                                    <button id="minimapReset"
+                                        style="flex: 1; padding: 6px; background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; cursor: pointer;">⟲</button>
+                                </div>
+                                <label style="display: block; padding: 8px 0;"><input type="checkbox" id="hideMainMap">
+                                    <span data-i18n="minimap.hideMain">Hide Main Map (PiP only)</span></label>
+                                <button id="pipButton"
+                                    style="width: 100%; padding: 8px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;"
+                                    data-i18n="minimap.pip">📺 Picture-in-Picture</button>
+                                <p style="font-size: 11px; color: var(--text-secondary); margin-top: 5px;"
+                                    data-i18n="minimap.hint">💡 Minimap: Scroll to zoom, right-drag to pan</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div id="view-settings" class="sidebar-view">
+                    <div class="controls-panel">
+                        <h2 data-i18n="sidebar.mapControls">Map Controls</h2>
+                        <div class="control-group">
+                            <h3 data-i18n="controls.layers">Layers</h3>
+                            <label><input type="checkbox" id="showPlayers" checked> <span
+                                    data-i18n="controls.players">Player
+                                    Positions</span></label>
+                            <label><input type="checkbox" id="showPlayerNames" checked> <span
+                                    data-i18n="controls.playerNames">Player Names</span></label>
+                            <label><input type="checkbox" id="showTrails" checked> <span
+                                    data-i18n="controls.trails">Player
+                                    Trails</span></label>
+                            <div id="trailDurationConfig"
+                                style="margin: 8px 0 8px 20px; padding: 8px; background: var(--bg-primary); border-radius: 4px;">
+                                <label
+                                    style="display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 5px;"><span
+                                        data-i18n="controls.trailDuration">Trail Duration:</span> <span
+                                        id="trailDurationValue">10</span> <span
+                                        data-i18n="controls.minutes">minutes</span></label>
+                                <input type="range" id="trailDurationSlider" min="1" max="30" value="10"
+                                    style="width: 100%; height: 6px; background: var(--bg-secondary); border-radius: 3px; outline: none; -webkit-appearance: none; appearance: none;">
+                                <style>
+                                    #trailDurationSlider::-webkit-slider-thumb {
+                                        -webkit-appearance: none;
+                                        appearance: none;
+                                        width: 16px;
+                                        height: 16px;
+                                        background: var(--accent);
+                                        cursor: pointer;
+                                        border-radius: 50%;
+                                    }
+
+                                    #trailDurationSlider::-moz-range-thumb {
+                                        width: 16px;
+                                        height: 16px;
+                                        background: var(--accent);
+                                        cursor: pointer;
+                                        border-radius: 50%;
+                                        border: none;
+                                    }
+                                </style>
+                            </div>
+                            <label><input type="checkbox" id="showMonuments" checked> <span
+                                    data-i18n="controls.monuments">Monuments</span></label>
+                            <label><input type="checkbox" id="showGrid" checked> <span
+                                    data-i18n="controls.grid">Grid</span></label>
+                            <label><input type="checkbox" id="showMarkers"> <span
+                                    data-i18n="controls.customMarkers">Custom
+                                    Markers</span></label>
+                            <label><input type="checkbox" id="showVendingMachines"> <span
+                                    data-i18n="controls.vending">Vending
+                                    Machines</span></label>
+                            <label><input type="checkbox" id="showEvents"> <span data-i18n="controls.events">Events
+                                    (Cargo/Heli)</span></label>
+                            <!-- <label><input type="checkbox" id="showRadZones"> <span data-i18n="controls.radZones">Rad
+                                    Zones</span></label> -->
+                            <label><input type="checkbox" id="showDeathMarkers"> <span
+                                    data-i18n="controls.deathMarkers">Death
+                                    Markers (24h)</span></label>
+                        </div>
+                    </div>
+                    <div class="control-group" id="deathMarkersConfig"
+                        style="display: none; margin-top: 10px; padding: 10px; background: var(--bg-primary); border-radius: 4px;">
+                        <h4 style="margin: 0 0 8px 0; font-size: 12px; color: var(--text-secondary);"
+                            data-i18n="deathMarkers.timeRange">Death Markers Time Range:</h4>
+                        <select id="deathMarkersTimeRange"
+                            style="width: 100%; padding: 5px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px;">
+                            <option value="1" data-i18n="deathMarkers.last1h">Last 1 hour</option>
+                            <option value="3" data-i18n="deathMarkers.last3h">Last 3 hours</option>
+                            <option value="6" data-i18n="deathMarkers.last6h">Last 6 hours</option>
+                            <option value="12" data-i18n="deathMarkers.last12h">Last 12 hours</option>
+                            <option value="24" selected data-i18n="deathMarkers.last24h">Last 24 hours</option>
+                            <option value="48" data-i18n="deathMarkers.last2d">Last 2 days</option>
+                            <option value="168" data-i18n="deathMarkers.last7d">Last 7 days</option>
+                            <option value="720" data-i18n="deathMarkers.last30d">Last 30 days</option>
+                        </select>
+                        <button id="refreshDeathMarkers"
+                            style="width: 100%; margin-top: 8px; padding: 6px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;"
+                            data-i18n="deathMarkers.refresh">🔄 Refresh Deaths</button>
                     </div>
                 </div>
 
-                <div class="team-panel">
-                    <h2>Team Members</h2>
-                    <div id="teamList"></div>
-                </div>
+                <script>
+                    // Simple inline script to handle tab switching
+                    document.addEventListener('DOMContentLoaded', () => {
+                        const navBtns = document.querySelectorAll('.nav-btn');
+                        const headerNavBtns = document.querySelectorAll('.header-nav-btn');
+                        const allNavBtns = [...navBtns, ...headerNavBtns];
+                        const views = document.querySelectorAll('.sidebar-view');
 
-                <div class="events-panel">
-                    <h2>Recent Events</h2>
-                    <div id="eventsList"></div>
-                </div>
+                        allNavBtns.forEach(btn => {
+                            btn.addEventListener('click', () => {
+                                const viewId = btn.getAttribute('data-view');
+                                if (!viewId) return;
+
+                                // Update active states
+                                document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+                                document.querySelectorAll('.header-nav-btn').forEach(b => b.classList.remove('active'));
+                                document.querySelectorAll('.sidebar-view').forEach(v => {
+                                    v.classList.remove('active');
+                                    v.style.display = 'none'; // Ensure clean toggle
+                                });
+
+                                // Activate current
+                                btn.classList.add('active');
+                                const view = document.getElementById(viewId);
+                                if (view) {
+                                    view.classList.add('active');
+                                    view.style.display = 'block';
+                                }
+                            });
+                        });
+                    });
+                </script>
             </aside>
 
             <main class="map-container">
                 <div id="mapWrapper" style="position: relative;">
-                    <canvas id="map-background-canvas" style="position: absolute; top: 0; left: 0; z-index: 1;"></canvas>
+                    <canvas id="map-background-canvas"
+                        style="position: absolute; top: 0; left: 0; z-index: 1;"></canvas>
                     <canvas id="map-static-canvas" style="position: absolute; top: 0; left: 0; z-index: 2;"></canvas>
                     <canvas id="map-dynamic-canvas" style="position: absolute; top: 0; left: 0; z-index: 3;"></canvas>
-                    <div id="mapOverlay" style="position: absolute; top: 0; left: 0; z-index: 4; pointer-events: none;"></div>
+                    <div id="mapOverlay" style="position: absolute; top: 0; left: 0; z-index: 4; pointer-events: none;">
+                    </div>
                 </div>
                 <div class="map-controls">
                     <button id="zoomIn" title="Zoom In">+</button>
@@ -137,9 +370,55 @@
         </div>
 
         <footer>
-            <div class="status">
-                <span id="connectionStatus" class="status-disconnected">● Disconnected</span>
-                <span id="lastUpdate">Last update: Never</span>
+            <div class="footer-left">
+                <div class="status">
+                    <span id="connectionStatus" class="status-disconnected" data-i18n="footer.disconnected">●
+                        Disconnected</span>
+                    <span id="lastUpdate" data-i18n="footer.lastUpdate">Last update: Never</span>
+                </div>
+            </div>
+
+            <div class="footer-center">
+                <div class="server-selector">
+                    <label for="serverSelect" data-i18n="header.selectServer">Select Server:</label>
+                    <select id="serverSelect">
+                        <option value="" data-i18n="header.loading">Loading...</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="footer-right">
+                <div class="language-selector-wrapper">
+                    <!-- Hidden native select for compatibility -->
+                    <select id="languageSelect" class="lang-select-native" style="display: none;">
+                        <option value="en">EN</option>
+                        <option value="es">ES</option>
+                        <option value="ru">RU</option>
+                    </select>
+
+                    <!-- Custom Dropdown -->
+                    <div class="custom-lang-selector" id="customLangSelector">
+                        <button class="lang-btn" id="langBtn">
+                            <span class="lang-flag" id="currentLangFlag"></span>
+                            <span class="lang-code" id="currentLangCode">EN</span>
+                            <span class="dropdown-arrow">▲</span>
+                        </button>
+                        <div class="lang-dropdown-menu" id="langDropdownMenu">
+                            <div class="lang-option" data-value="en">
+                                <img src="https://flagcdn.com/us.svg" class="lang-flag-icon" alt="US">
+                                <span>EN</span>
+                            </div>
+                            <div class="lang-option" data-value="es">
+                                <img src="https://flagcdn.com/es.svg" class="lang-flag-icon" alt="ES">
+                                <span>ES</span>
+                            </div>
+                            <div class="lang-option" data-value="ru">
+                                <img src="https://flagcdn.com/ru.svg" class="lang-flag-icon" alt="RU">
+                                <span>RU</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </footer>
     </div>
@@ -149,6 +428,279 @@
     <script src="/js/auth-manager.js"></script>
     <script src="/js/map-replay.js"></script>
     <script src="/js/statistics.js"></script>
+    <script src="/js/translations.js"></script>
+    <script src="/js/language_manager.js"></script>
+    <script src="/js/notifications.js"></script>
+    <div id="vendingModal" class="vending-modal">
+        <div class="vending-modal-content">
+            <div class="vending-header">
+                <h2 data-i18n="vending.title">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round"
+                        style="vertical-align: middle; margin-right: 8px;">
+                        <circle cx="9" cy="21" r="1" />
+                        <circle cx="20" cy="21" r="1" />
+                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+                    </svg>
+                    Shops Browser
+                </h2>
+                <button class="close-vending-btn">&times;</button>
+            </div>
+            <div class="vending-controls">
+                <input type="text" id="vendingSearch" placeholder="Search items (e.g. AK-47)..."
+                    data-i18n-placeholder="vending.search">
+                <div class="vending-stats">
+                    <span id="vendingCount">0</span> <span data-i18n="vending.found">shops found</span>
+                </div>
+                <label class="hide-empty-label">
+                    <input type="checkbox" id="hideEmptyShops">
+                    <span data-i18n="vending.hideEmpty">Hide empty shops</span>
+                </label>
+            </div>
+            <div class="vending-list" id="vendingList">
+                <!-- Vending machines will be injected here -->
+                <div class="vending-loading" data-i18n="vending.loading">Loading shops...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Smart Switches Modal (Mirrors Vending Modal Style) -->
+    <div id="switchesModal" class="vending-modal">
+        <div class="vending-modal-content">
+            <div class="vending-header">
+                <h2 data-i18n="switches.title">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="vertical-align: middle; margin-right: 8px;">
+                        <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+                        <line x1="12" y1="2" x2="12" y2="12"></line>
+                    </svg>
+                    Smart Switches
+                </h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="vending-body">
+                <div id="switches-list" class="switches-list">
+                    <!-- Switches injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Trackers Modal -->
+    <div id="trackersModal" class="vending-modal">
+        <div class="vending-modal-content">
+            <div class="vending-header">
+                <h2 data-i18n="trackers.title">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="vertical-align: middle; margin-right: 8px;">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path
+                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                        </path>
+                    </svg>
+                    Trackers Management
+                </h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="vending-controls" style="justify-content: flex-end;">
+                <button id="createTrackerBtn" class="action-btn btn-red"
+                    style="padding: 0.6rem 1.2rem; cursor: pointer;" data-i18n="trackers.action.create">+ Create New
+                    Tracker</button>
+            </div>
+            <div class="vending-body">
+                <div id="trackers-list" class="switches-list">
+                    <!-- Trackers injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player List Modal -->
+    <div id="playerListModal" class="vending-modal">
+        <div class="vending-modal-content" style="max-width: 600px; height: 70vh;">
+            <div class="vending-header">
+                <h2 data-i18n="players.title">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round"
+                        style="vertical-align: middle; margin-right: 8px;">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    Server Players
+                </h2>
+                <button class="close-vending-btn" id="closePlayerListBtn">&times;</button>
+            </div>
+            <div class="vending-controls">
+                <input type="text" id="playerSearch" placeholder="Search players..."
+                    style="flex: 1; padding: 0.6rem; background: var(--bg-secondary); border: 1px solid var(--border); color: white; border-radius: 4px;">
+                <div class="vending-stats">
+                    <span id="playerCountDisplay">0</span> online
+                </div>
+            </div>
+            <div class="vending-list" id="playerListContainer"
+                style="display: flex; flex-direction: column; gap: 8px; padding: 1rem;">
+                <!-- Players will be injected here -->
+            </div>
+            <div
+                style="padding: 1rem; border-top: 1px solid var(--border); text-align: center; font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4;">
+                <span style="color: var(--accent);" data-i18n="playerList.steamNoteLabel">Steam Note:</span> <span
+                    data-i18n="playerList.steamNoteTeam">Direct profile links are available for Team Members.</span>
+                <br>
+                <span data-i18n="playerList.steamNoteOther">For other players, the link will search Steam by
+                    name.</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/switches-modal.js"></script>
+    <script src="js/trackers-modal.js"></script>
+    <script src="js/vending.js"></script>
     <script src="app.js"></script>
+    <!-- Edit Switch Modal -->
+    <div id="editSwitchModal" class="edit-modal-overlay">
+        <div class="edit-modal-content">
+            <div class="edit-modal-header">
+                <h3 data-i18n="switches.edit.title">Editar Interruptor</h3>
+                <button class="close-edit-modal">&times;</button>
+            </div>
+            <div class="edit-modal-body">
+                <div class="form-group">
+                    <label for="editSwitchName" data-i18n="switches.edit.nameLabel">Nombre</label>
+                    <input type="text" id="editSwitchName" placeholder="Nombre del interruptor"
+                        data-i18n-placeholder="switches.edit.namePlaceholder">
+                </div>
+                <div class="form-group">
+                    <label for="editSwitchCommand" data-i18n="switches.edit.commandLabel">Comando Personalizado</label>
+                    <div class="input-prefix-group">
+                        <span class="prefix">!</span>
+                        <input type="text" id="editSwitchCommand" placeholder="comando"
+                            data-i18n-placeholder="switches.edit.commandPlaceholder">
+                    </div>
+                </div>
+            </div>
+            <div class="edit-modal-footer">
+                <button id="cancelEditBtn" class="btn-cancel" data-i18n="switches.edit.cancel">Cancelar</button>
+                <button id="saveEditBtn" class="btn-save" data-i18n="switches.edit.save">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Tracker Modal -->
+    <div id="editTrackerModal" class="edit-modal-overlay">
+        <div class="edit-modal-content" style="max-width: 500px;">
+            <div class="edit-modal-header">
+                <h3 data-i18n="trackers.edit.title">Editar Tracker</h3>
+                <button class="close-edit-modal">&times;</button>
+            </div>
+            <div class="edit-modal-body">
+                <div class="form-group" style="margin-bottom: 1rem; display: flex; flex-direction: column;">
+                    <label data-i18n="trackers.edit.nameLabel">Nombre del Tracker</label>
+                    <input type="text" id="editTrackerName" placeholder="Tracker"
+                        data-i18n-placeholder="trackers.edit.namePlaceholder"
+                        style="padding: 0.6rem; background: var(--bg-primary); border: 1px solid var(--border); color: white; border-radius: 4px;">
+                </div>
+                <div class="form-group" style="margin-bottom: 1rem; display: flex; flex-direction: column;">
+                    <label data-i18n="trackers.edit.bmIdLabel">ID de BattleMetrics</label>
+                    <input type="text" id="editTrackerBMId" placeholder="ID"
+                        data-i18n-placeholder="trackers.edit.bmIdPlaceholder"
+                        style="padding: 0.6rem; background: var(--bg-primary); border: 1px solid var(--border); color: white; border-radius: 4px;">
+                </div>
+                <div class="form-group" style="margin-bottom: 1rem; display: flex; flex-direction: column;">
+                    <label data-i18n="trackers.edit.clanTagLabel">Etiqueta de Clan (opcional)</label>
+                    <input type="text" id="editTrackerClanTag" placeholder="ABC"
+                        data-i18n-placeholder="trackers.edit.clanTagPlaceholder"
+                        style="padding: 0.6rem; background: var(--bg-primary); border: 1px solid var(--border); color: white; border-radius: 4px;">
+                </div>
+                <div class="form-group" style="margin-bottom: 1rem; display: flex; flex-direction: column;">
+                    <label data-i18n="trackers.edit.channelLabel">Nombre del Canal de Discord</label>
+                    <input type="text" id="editTrackerChannelName" placeholder="tracker-channel"
+                        data-i18n-placeholder="trackers.edit.channelPlaceholder"
+                        style="padding: 0.6rem; background: var(--bg-primary); border: 1px solid var(--border); color: white; border-radius: 4px;">
+                </div>
+                <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+                    <label
+                        style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-secondary);">
+                        <input type="checkbox" id="editTrackerEveryone"> <span
+                            data-i18n="trackers.edit.everyoneLabel">Mencionar a todos (@everyone)</span>
+                    </label>
+                    <label
+                        style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-secondary);">
+                        <input type="checkbox" id="editTrackerInGame" checked> <span
+                            data-i18n="trackers.edit.inGameLabel">Rastrear solo in-game</span>
+                    </label>
+                </div>
+
+            </div>
+            <div class="edit-modal-footer">
+                <button id="cancelTrackerEditBtn" class="btn-cancel" data-i18n="switches.edit.cancel">Cancelar</button>
+                <button id="saveTrackerEditBtn" class="btn-save" data-i18n="switches.edit.save">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Player to Tracker Modal -->
+    <div id="addTrackerPlayerModal" class="edit-modal-overlay">
+        <div class="edit-modal-content" style="max-width: 400px;">
+            <div class="edit-modal-header">
+                <h3 data-i18n="trackers.modal.addPlayer.title">Añadir Jugador al Tracker</h3>
+                <button class="close-edit-modal">&times;</button>
+            </div>
+            <div class="edit-modal-body">
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label data-i18n="trackers.modal.addPlayer.label">SteamID64 o ID de BattleMetrics</label>
+                    <input type="text" id="addTrackerPlayerId_new" placeholder="76561198..."
+                        data-i18n-placeholder="trackers.modal.addPlayer.placeholder"
+                        style="width: 100%; padding: 0.8rem; background: var(--bg-primary); border: 1px solid var(--border); color: white; border-radius: 4px; font-size: 1rem; margin-top: 0.5rem;">
+                </div>
+                <p style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4;">
+                    Introduce el SteamID64 (ej: 76561198...) o el ID numérico de BattleMetrics para rastrear al jugador.
+                </p>
+            </div>
+            <div class="edit-modal-footer">
+                <button id="cancelAddPlayerBtn" class="btn-cancel" data-i18n="switches.edit.cancel">Cancelar</button>
+                <button id="confirmAddPlayerBtn" class="btn-save" data-i18n="trackers.action.addPlayer">Añadir
+                    Jugador</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Remove Player Modal -->
+    <div id="removeTrackerPlayerModal" class="edit-modal-overlay">
+        <div class="edit-modal-content" style="max-width: 450px;">
+            <div class="edit-modal-header">
+                <h3 data-i18n="trackers.modal.manage.title">Gestionar Jugadores</h3>
+                <button class="close-edit-modal">&times;</button>
+            </div>
+            <div class="edit-modal-body">
+                <div id="removePlayerList" class="remove-player-list-container">
+                    <!-- Loaded dynamically -->
+                </div>
+            </div>
+            <div class="edit-modal-footer">
+                <button id="closeRemovePlayerBtn" class="btn-cancel" data-i18n="stats.close">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="edit-modal-overlay">
+        <div class="edit-modal-content" style="max-width: 400px; text-align: center;">
+            <div class="edit-modal-header">
+                <h3 id="confirmTitle">Confirmación</h3>
+            </div>
+            <div class="edit-modal-body" style="padding: 2.5rem 1.5rem;">
+                <p id="confirmMessage" style="font-size: 1.1rem; line-height: 1.5; color: var(--text-primary);">¿Estás
+                    seguro de realizar esta acción?</p>
+            </div>
+            <div class="edit-modal-footer" style="justify-content: center; gap: 15px; padding-bottom: 2rem;">
+                <button id="confirmCancelBtn" class="btn-cancel" style="min-width: 100px;">Cancelar</button>
+                <button id="confirmOkBtn" class="btn-save"
+                    style="background: var(--accent); min-width: 100px;">Confirmar</button>
+            </div>
+        </div>
+    </div>
 </body>
+
 </html>

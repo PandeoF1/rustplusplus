@@ -4,25 +4,38 @@ class RustPlusWebUI {
         this.currentGuildId = null;
         this.serverData = null;
         this.mapImage = null;
-        
+
         // Initialize API client
         this.apiClient = new APIClient();
-        
+
         // Initialize global authentication manager
         this.authManager = new AuthManager(this.apiClient);
-        
+
         // Statistics manager
         this.statisticsManager = null;
-        
+        this.vendingManager = null;
+
         // Map replay system
         this.mapReplay = null;
-        
+
         // Player colors (persistent across sessions)
         this.playerColors = {};
-        
+
+        // Initialize marker images
+        this.markerImages = {
+            shop: new Image(),
+            chinook: new Image(),
+            heli: new Image(),
+            cargo: new Image()
+        };
+        this.markerImages.shop.src = '/images/markers/shop.png';
+        this.markerImages.chinook.src = '/images/markers/chinook.png';
+        this.markerImages.heli.src = '/images/markers/heli.png';
+        this.markerImages.cargo.src = '/images/markers/cargo.png';
+
         // Trail duration setting (in milliseconds) - default 10 minutes
         this.trailDuration = parseInt(localStorage.getItem('trailDuration')) || 600000;
-        
+
         // Monument name mapping with emojis
         this.monumentNames = {
             // Base names
@@ -69,7 +82,7 @@ class RustPlusWebUI {
             'stables': { name: 'Stables', emoji: '🐴' },
             'stables_a': { name: 'Ranch', emoji: '🐄' },
             'stables_b': { name: 'Large Barn', emoji: '🏚️' },
-            
+
             // Display name variants (with _display_name suffix)
             'airfield_display_name': { name: 'Airfield', emoji: '✈️' },
             'arctic_base_display_name': { name: 'Arctic Research Base', emoji: '🏔️' },
@@ -123,7 +136,7 @@ class RustPlusWebUI {
             'mining_quarry_stone_display_name': { name: 'Stone Quarry', emoji: '🪨' },
             'mining_quarry_hqm_display_name': { name: 'HQM Quarry', emoji: '🪨' }
         };
-        
+
         // Canvas layers
         this.backgroundCanvas = null;
         this.backgroundCtx = null;
@@ -131,9 +144,9 @@ class RustPlusWebUI {
         this.staticCtx = null;
         this.dynamicCanvas = null;
         this.dynamicCtx = null;
-        
+
         this.worldRect = null;
-        
+
         // Pan and zoom state
         this.baseScale = 1;
         this.scale = 1;
@@ -142,7 +155,7 @@ class RustPlusWebUI {
         this.isDragging = false;
         this.lastX = 0;
         this.lastY = 0;
-        
+
         // Control states
         this.controls = {
             showPlayers: true,
@@ -156,15 +169,15 @@ class RustPlusWebUI {
             showRadZones: false,
             showDeathMarkers: false
         };
-        
+
         // Death markers data
         this.deathMarkersData = [];
         this.deathMarkersTimeRange = 24; // hours
-        
+
         // Recent team deaths (always shown for 5 minutes, separate from death markers option)
         this.recentTeamDeaths = [];
         this.TEAM_DEATH_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
-        
+
         // Persistent patrol markers (5-minute expiry)
         this.persistentPatrolMarkers = [];
         this.PATROL_MARKER_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
@@ -176,7 +189,7 @@ class RustPlusWebUI {
         this.lastRenderTime = 0;
         this.dirtyStatic = true;
         this.dirtyDynamic = true;
-        
+
         // Minimap properties
         this.minimapCanvas = null;
         this.minimapCtx = null;
@@ -190,14 +203,54 @@ class RustPlusWebUI {
         this.minimapBaseCanvas = null;
         this.minimapBaseCtx = null;
         this.minimapBaseDirty = true;
-        
+
         // Player avatars cache
         this.playerAvatars = {};
         this.loadAvatars = true;
         this.showMinimapGrid = true;
         this.showMinimapPlayerNames = true;
-        
+
+        // Language Manager
+        this.languageManager = new LanguageManager();
+
+        // Notification Manager
+        this.notificationManager = new NotificationManager();
+        this.switchesManager = new SwitchesModalManager(this);
+        this.trackersManager = new TrackersModalManager(this);
+
+        // Expose to global scope for onclick handlers in HTML templates
+        window.switchesModal = this.switchesManager;
+        window.trackersModal = this.trackersManager;
+
+        this.setupPlayerListModal(); // Initialize player list modal listeners
+
+        // Setup custom confirm modal listeners
+        this.setupConfirmModal();
+
+        // Setup custom confirm modal listeners
+        this.setupConfirmModal();
+
+        // Load persistend controls settings
+        this.loadPersistentControls();
+
         this.init();
+    }
+
+    loadPersistentControls() {
+        const savedControls = localStorage.getItem('rpp_controls');
+        if (savedControls) {
+            try {
+                const parsed = JSON.parse(savedControls);
+                // Merge saved controls with current ones to ensure we don't lose new keys
+                this.controls = { ...this.controls, ...parsed };
+            } catch (e) {
+                console.error('Failed to load persistent controls', e);
+            }
+        }
+    }
+
+    savePersistentControls() {
+        localStorage.setItem('rpp_controls', JSON.stringify(this.controls));
     }
 
     computeWorldRectFromWorldSize(imgW, imgH, worldSize, padWorld = 2000) {
@@ -224,10 +277,10 @@ class RustPlusWebUI {
         if (worldSize <= 0 || this.worldRect.width <= 0) {
             return { x: 0, y: 0 };
         }
-        
+
         const x = this.worldRect.x + (worldX / worldSize) * this.worldRect.width;
         const y = this.worldRect.y + ((worldSize - worldY) / worldSize) * this.worldRect.height;
-        
+
         return { x, y };
     }
 
@@ -244,45 +297,48 @@ class RustPlusWebUI {
         this.setupEventListeners();
         this.loadGuilds();
         this.startRenderLoop();
-        
+
         // Initialize map replay system
         this.mapReplay = new MapReplay(this);
-        
+
+        // Initialize vending manager
+        this.vendingManager = new VendingManager(this);
+
         // Setup statistics button (will be enabled when server is selected)
         this.setupStatisticsButton();
-        
+
         // Make globally accessible for statistics panel
         window.rustplusUI = this;
-        
+
         // Add window resize listener
         window.addEventListener('resize', () => this.handleResize());
         this.handleResize();
     }
-    
+
     handleResize() {
         if (!this.mapImage) return;
-        
+
         const wrapper = document.getElementById('mapWrapper');
         const containerWidth = wrapper.clientWidth;
         const containerHeight = wrapper.clientHeight;
-        
+
         // Set canvas dimensions to fill the container
         [this.backgroundCanvas, this.staticCanvas, this.dynamicCanvas].forEach(canvas => {
             canvas.width = containerWidth;
             canvas.height = containerHeight;
         });
-        
+
         // Compute base scale to fit map image into container
         const prevBaseScale = this.baseScale || 1;
         const zoomRatio = this.scale / prevBaseScale;
         this.baseScale = Math.min(containerWidth / this.mapImage.width, containerHeight / this.mapImage.height);
         this.scale = this.baseScale * zoomRatio;
-        
+
         // Recalculate world rect based on the original map image size
         if (this.serverData?.info) {
             this.worldRect = this.computeWorldRectFromWorldSize(this.mapImage.width, this.mapImage.height, this.serverData.info.mapSize);
         }
-        
+
         // Redraw everything
         this.dirtyStatic = true;
         this.dirtyDynamic = true;
@@ -296,7 +352,7 @@ class RustPlusWebUI {
         this.minimapCanvas.height = this.minimapSize;
         this.minimapBaseCanvas = document.createElement('canvas');
         this.minimapBaseCtx = this.minimapBaseCanvas.getContext('2d');
-        
+
         this.minimapCanvas.addEventListener('wheel', (e) => {
             e.preventDefault();
             const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
@@ -305,11 +361,11 @@ class RustPlusWebUI {
             this.dirtyDynamic = true;
             this.needsRender = true;
         });
-        
+
         let isPanning = false;
         let panStartX = 0, panStartY = 0;
         let panStartPanX = 0, panStartPanY = 0;
-        
+
         this.minimapCanvas.addEventListener('mousedown', (e) => {
             if (e.button === 2) {
                 isPanning = true;
@@ -320,7 +376,7 @@ class RustPlusWebUI {
                 e.preventDefault();
             }
         });
-        
+
         this.minimapCanvas.addEventListener('mousemove', (e) => {
             if (isPanning) {
                 const dx = e.clientX - panStartX;
@@ -331,13 +387,13 @@ class RustPlusWebUI {
                 this.needsRender = true;
             }
         });
-        
+
         window.addEventListener('mouseup', (e) => {
             if (e.button === 2) isPanning = false;
         });
-        
+
         this.minimapCanvas.addEventListener('mouseleave', () => { isPanning = false; });
-        
+
         this.minimapCanvas.addEventListener('dblclick', (e) => {
             if (e.button === 2) {
                 this.minimapZoom = 1.0;
@@ -348,26 +404,50 @@ class RustPlusWebUI {
                 e.preventDefault();
             }
         });
-        
+
         this.minimapCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
     }
 
     setupSocketConnection() {
         this.socket = io();
-        
-        this.socket.on('connect', () => this.updateConnectionStatus(true));
+
+        this.socket.on('connect', () => {
+            this.updateConnectionStatus(true);
+            // Refresh list and restore subscription if we had a server selected
+            this.loadGuilds(true).then(() => {
+                if (this.currentGuildId) {
+                    this.selectServer(this.currentGuildId);
+                }
+            });
+
+            // Enable statistics button if we have a guild selected (autoconnect)
+            if (this.currentGuildId) {
+                const statsBtn = document.getElementById('statsButton');
+                if (statsBtn) {
+                    statsBtn.disabled = false;
+                    statsBtn.style.display = 'flex';
+                }
+            }
+        });
         this.socket.on('disconnect', () => this.updateConnectionStatus(false));
+
+        this.socket.on('guildsUpdate', () => {
+            this.loadGuilds(true);
+        });
 
         this.socket.on('serverUpdate', (data) => {
             const firstUpdate = !this.serverData;
             this.serverData = data;
-            
+
             // Update serverId in statistics manager and enable stats button once we have server data
             if (this.statisticsManager && data.serverId) {
                 this.statisticsManager.serverId = data.serverId;
-                // Enable statistics button now that we have serverId
+                // Enable statistics button if not already enabled
                 const statsBtn = document.getElementById('statsButton');
-                if (statsBtn) statsBtn.disabled = false;
+                if (statsBtn && statsBtn.disabled) {
+                    statsBtn.disabled = false;
+                    statsBtn.style.display = 'flex';
+                }
             }
 
             if ((firstUpdate || !this.worldRect) && this.mapImage && this.serverData.info) {
@@ -378,14 +458,14 @@ class RustPlusWebUI {
                 );
                 this.dirtyStatic = true;
             }
-            
+
             // Track patrol helicopter DEATH location (explosion when taken down)
             if (data.mapMarkers?.patrolHelicopterDestroyedLocation && data.mapMarkers?.timeSincePatrolHelicopterWasDestroyed) {
                 const deathTime = new Date(data.mapMarkers.timeSincePatrolHelicopterWasDestroyed).getTime();
-                const exists = this.persistentPatrolMarkers.some(m => 
+                const exists = this.persistentPatrolMarkers.some(m =>
                     m.type === 'heli' && m.timestamp === deathTime
                 );
-                
+
                 if (!exists) {
                     const gridPos = data.mapMarkers.patrolHelicopterDestroyedLocation;
                     // Convert grid position to world coordinates
@@ -396,13 +476,24 @@ class RustPlusWebUI {
             }
 
             this.updateUI();
+
+            // Update switches modal if open
+            if (this.switchesManager && this.switchesManager.modal && this.switchesManager.modal.classList.contains('open')) {
+                this.switchesManager.fetchAndRender();
+            }
+
+            // Update trackers modal if open
+            if (this.trackersManager && this.trackersManager.modal && this.trackersManager.modal.classList.contains('open')) {
+                this.trackersManager.fetchAndRender();
+            }
+
             this.updateLastUpdateTime();
-            
+
             // Load player avatars and update trails
             if (data.team?.players) {
                 data.team.players.forEach(p => {
                     this.loadPlayerAvatar(p.steamId);
-                    
+
                     // Add to player trails
                     if (p.isOnline && p.isAlive) {
                         // Validate player position (not at 0,0 and not undefined)
@@ -410,33 +501,33 @@ class RustPlusWebUI {
                             // Skip invalid positions
                             return;
                         }
-                        
+
                         // Initialize trail start time for new players
                         if (!this.playerTrailStartTime[p.steamId]) {
                             this.playerTrailStartTime[p.steamId] = Date.now();
                             return; // Don't add trail yet
                         }
-                        
+
                         // Wait 5 seconds before starting to record trails
                         if (Date.now() - this.playerTrailStartTime[p.steamId] < this.TRAIL_DELAY) {
                             return; // Still in delay period
                         }
-                        
+
                         if (!this.playerTrails[p.steamId]) {
                             this.playerTrails[p.steamId] = [];
                         }
-                        
+
                         const pos = this.worldToCanvas(p.x, p.y);
                         if (pos) {
                             const trails = this.playerTrails[p.steamId];
                             const lastTrail = trails[trails.length - 1];
-                            
+
                             // Only add if moved significantly (reduce trail point density)
-                            if (!lastTrail || 
-                                Math.abs(lastTrail.x - pos.x) > 5 || 
+                            if (!lastTrail ||
+                                Math.abs(lastTrail.x - pos.x) > 5 ||
                                 Math.abs(lastTrail.y - pos.y) > 5) {
                                 trails.push({ x: pos.x, y: pos.y, time: Date.now() });
-                                
+
                                 // Keep only last 100 points
                                 if (trails.length > 100) {
                                     trails.shift();
@@ -446,11 +537,11 @@ class RustPlusWebUI {
                     }
                 });
             }
-            
+
             this.dirtyDynamic = true;
             this.needsRender = true;
         });
-        
+
         this.socket.on('resetPlayerTrail', (data) => {
             if (data.steamId && this.playerTrails[data.steamId]) {
                 console.log(`[WebUI] Resetting trail for player ${data.steamId}`);
@@ -461,7 +552,7 @@ class RustPlusWebUI {
                 this.needsRender = true;
             }
         });
-        
+
         this.socket.on('teamDeath', (data) => {
             if (data.x && data.y && data.player_name) {
                 const now = Date.now();
@@ -474,8 +565,27 @@ class RustPlusWebUI {
                     expiresAt: now + this.TEAM_DEATH_DURATION
                 });
                 console.log(`[WebUI] Team death recorded: ${data.player_name} at (${data.x}, ${data.y})`);
+
+                // Add notification
+                if (this.notificationManager) {
+                    this.notificationManager.addNotification('death', `💀 ${data.player_name} died`);
+                }
+
                 this.dirtyDynamic = true;
                 this.needsRender = true;
+            }
+        });
+
+        // Listen for generic events if the server emits them (adding support for future)
+        this.socket.on('notification', (data) => {
+            if (this.notificationManager && data.type && data.message) {
+                this.notificationManager.addNotification(data.type, data.message);
+            }
+        });
+
+        this.socket.on('chatMessage', (data) => {
+            if (this.statisticsManager) {
+                this.statisticsManager.handleNewChatMessage(data);
             }
         });
     }
@@ -486,15 +596,20 @@ class RustPlusWebUI {
         Object.keys(this.controls).forEach(key => {
             const checkbox = document.getElementById(key);
             if (checkbox) {
+                // Restore state from persistence
+                checkbox.checked = this.controls[key];
+
                 checkbox.addEventListener('change', (e) => {
                     this.controls[key] = e.target.checked;
+                    this.savePersistentControls(); // Save on change
+
                     this.needsRender = true;
                     const staticControls = ['showGrid', 'showMonuments', 'showVendingMachines'];
                     if (staticControls.includes(key)) {
                         this.dirtyStatic = true;
                     }
                     this.dirtyDynamic = true;
-                    
+
                     // Show/hide death markers config and fetch data
                     if (key === 'showDeathMarkers') {
                         const config = document.getElementById('deathMarkersConfig');
@@ -506,9 +621,17 @@ class RustPlusWebUI {
                         }
                     }
                 });
+
+                // Trigger initial visibility for special controls
+                if (key === 'showDeathMarkers') {
+                    const config = document.getElementById('deathMarkersConfig');
+                    if (config) {
+                        config.style.display = this.controls[key] ? 'block' : 'none';
+                    }
+                }
             }
         });
-        
+
         // Death markers time range selector
         const timeRangeSelect = document.getElementById('deathMarkersTimeRange');
         if (timeRangeSelect) {
@@ -519,7 +642,7 @@ class RustPlusWebUI {
                 }
             });
         }
-        
+
         // Refresh death markers button
         const refreshBtn = document.getElementById('refreshDeathMarkers');
         if (refreshBtn) {
@@ -529,7 +652,7 @@ class RustPlusWebUI {
                 }
             });
         }
-        
+
         // Trail duration slider
         const trailSlider = document.getElementById('trailDurationSlider');
         const trailValue = document.getElementById('trailDurationValue');
@@ -538,19 +661,19 @@ class RustPlusWebUI {
             const currentMinutes = Math.round(this.trailDuration / 60000);
             trailSlider.value = currentMinutes;
             trailValue.textContent = currentMinutes;
-            
+
             trailSlider.addEventListener('input', (e) => {
                 const minutes = parseInt(e.target.value);
                 trailValue.textContent = minutes;
                 this.trailDuration = minutes * 60000; // Convert to milliseconds
                 localStorage.setItem('trailDuration', this.trailDuration.toString());
-                
+
                 // Clear existing trails to apply new duration immediately
                 Object.keys(this.playerTrails).forEach(steamId => {
                     const trails = this.playerTrails[steamId] || [];
                     this.playerTrails[steamId] = trails.filter(t => t.time > Date.now() - this.trailDuration);
                 });
-                
+
                 this.dirtyDynamic = true;
                 this.needsRender = true;
             });
@@ -562,7 +685,7 @@ class RustPlusWebUI {
         document.getElementById('toggleFullscreen').addEventListener('click', () => this.toggleFullscreen());
 
         const wrapper = this.dynamicCanvas;
-        
+
         wrapper.addEventListener('mousedown', (e) => {
             this.isDragging = true;
             this.lastX = e.clientX;
@@ -579,10 +702,10 @@ class RustPlusWebUI {
                 this.needsRender = true;
             }
         });
-        
+
         wrapper.addEventListener('mouseup', () => { this.isDragging = false; });
         wrapper.addEventListener('mouseleave', () => { this.isDragging = false; });
-        
+
         document.getElementById('mapWrapper').addEventListener('wheel', (e) => {
             e.preventDefault();
             const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
@@ -595,19 +718,19 @@ class RustPlusWebUI {
             this.dirtyDynamic = true;
             this.needsRender = true;
         });
-        
+
         document.getElementById('minimapZoomIn')?.addEventListener('click', () => {
             this.minimapZoom = Math.min(this.minimapZoomMax, this.minimapZoom * 1.2);
             this.dirtyDynamic = true;
             this.needsRender = true;
         });
-        
+
         document.getElementById('minimapZoomOut')?.addEventListener('click', () => {
             this.minimapZoom = Math.max(this.minimapZoomMin, this.minimapZoom / 1.2);
             this.dirtyDynamic = true;
             this.needsRender = true;
         });
-        
+
         document.getElementById('minimapReset')?.addEventListener('click', () => {
             this.minimapZoom = 1.0;
             this.minimapPanX = 0;
@@ -615,23 +738,35 @@ class RustPlusWebUI {
             this.dirtyDynamic = true;
             this.needsRender = true;
         });
-        
+
         document.getElementById('hideMainMap')?.addEventListener('change', (e) => {
             const mapContainer = document.querySelector('.map-container');
             if (mapContainer) mapContainer.style.display = e.target.checked ? 'none' : 'flex';
         });
     }
 
-    async loadGuilds() {
+    async loadGuilds(silent = false) {
         try {
             const response = await fetch('/api/guilds');
             const guilds = await response.json();
             const select = document.getElementById('serverSelect');
+
+            const previousGuildId = this.currentGuildId;
+
             select.innerHTML = '<option value="">Select a server...</option>';
             guilds.forEach(g => select.add(new Option(`${g.guildName} - ${g.serverName}`, g.guildId)));
+
             if (guilds.length > 0) {
-                select.value = guilds[0].guildId;
-                this.selectServer(guilds[0].guildId);
+                const stillExists = guilds.some(g => g.guildId === previousGuildId);
+
+                if (previousGuildId && stillExists) {
+                    select.value = previousGuildId;
+                    // We don't call selectServer here if it's a simple list refresh,
+                    // but we DO if it's the initial connect (handled in connect handler)
+                } else if (!silent) {
+                    select.value = guilds[0].guildId;
+                    this.selectServer(guilds[0].guildId);
+                }
             } else {
                 select.innerHTML = '<option value="">No active servers</option>';
             }
@@ -650,10 +785,10 @@ class RustPlusWebUI {
             if (statsBtn) statsBtn.disabled = true;
             return;
         }
-        
+
         // Check authentication BEFORE subscribing or showing anything
         const isAuthenticated = await this.authManager.ensureAuthenticated(guildId);
-        
+
         if (!isAuthenticated) {
             // User closed PIN modal or authentication failed
             // Reset to no server selected
@@ -663,31 +798,36 @@ class RustPlusWebUI {
             this.serverData = null;
             return;
         }
-        
+
         // Only proceed if authenticated
         this.socket.emit('subscribe', guildId);
         this.loadMapImage(guildId);
-        
+
         // Initialize statistics manager for this guild
+        const serverId = this.serverData?.serverId || null;
         if (this.statisticsManager) {
             this.statisticsManager.guildId = guildId;
-            this.statisticsManager.serverId = null;
+            this.statisticsManager.serverId = serverId;
             this.statisticsManager.authManager = this.authManager; // Share auth manager
         } else {
-            this.statisticsManager = new StatisticsManager(this.apiClient, guildId, null);
+            this.statisticsManager = new StatisticsManager(this.apiClient, guildId, serverId);
             this.statisticsManager.authManager = this.authManager; // Share auth manager
+            this.statisticsManager.init();
         }
-        
-        // Disable statistics button until we receive serverId from serverUpdate
+
+        // Enable statistics button immediately
         const statsBtn = document.getElementById('statsButton');
-        if (statsBtn) statsBtn.disabled = true;
-        
+        if (statsBtn) {
+            statsBtn.disabled = false;
+            statsBtn.style.display = 'flex';
+        }
+
         // Load player colors
         this.loadPlayerColors();
-        
+
         // Load persistent patrol markers
         this.loadPersistentMarkers();
-        
+
         // Start cleanup interval if not already running
         if (!this.patrolMarkerCleanupInterval) {
             this.patrolMarkerCleanupInterval = setInterval(() => {
@@ -697,55 +837,102 @@ class RustPlusWebUI {
             }, 30000); // Check every 30 seconds
         }
     }
-    
+
+    setupConfirmModal() {
+        const modal = document.getElementById('confirmModal');
+        const okBtn = document.getElementById('confirmOkBtn');
+        const cancelBtn = document.getElementById('confirmCancelBtn');
+
+        if (!modal || !okBtn || !cancelBtn) return;
+
+        cancelBtn.onclick = () => {
+            modal.classList.remove('open');
+        };
+
+        modal.onclick = (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('open');
+            }
+        };
+    }
+
+    /**
+     * Shows a custom confirmation modal
+     * @param {string} title - Title of the modal
+     * @param {string} message - Message body
+     * @param {function} onConfirm - Callback when OK is clicked
+     */
+    showConfirm(title, message, onConfirm) {
+        const modal = document.getElementById('confirmModal');
+        const titleEl = document.getElementById('confirmTitle');
+        const messageEl = document.getElementById('confirmMessage');
+        const okBtn = document.getElementById('confirmOkBtn');
+
+        if (!modal || !titleEl || !messageEl || !okBtn) {
+            // Fallback to native confirm if elements not found
+            if (confirm(message)) onConfirm();
+            return;
+        }
+
+        titleEl.textContent = title;
+        messageEl.textContent = message;
+
+        okBtn.onclick = () => {
+            modal.classList.remove('open');
+            onConfirm();
+        };
+
+        modal.classList.add('open');
+    }
+
     cleanExpiredDeathMarkers() {
         if (!this.deathMarkersData?.length) return;
-        
+
         const now = Date.now();
         const before = this.deathMarkersData.length;
         this.deathMarkersData = this.deathMarkersData.filter(m => m.expiresAt > now);
-        
+
         if (this.deathMarkersData.length !== before) {
             console.log(`[WebUI] Cleaned ${before - this.deathMarkersData.length} expired death markers`);
             this.dirtyDynamic = true;
             this.needsRender = true;
         }
     }
-    
+
     cleanExpiredTeamDeaths() {
         if (!this.recentTeamDeaths?.length) return;
-        
+
         const now = Date.now();
         const before = this.recentTeamDeaths.length;
         this.recentTeamDeaths = this.recentTeamDeaths.filter(d => d.expiresAt > now);
-        
+
         if (this.recentTeamDeaths.length !== before) {
             console.log(`[WebUI] Cleaned ${before - this.recentTeamDeaths.length} expired team deaths`);
             this.dirtyDynamic = true;
             this.needsRender = true;
         }
     }
-    
+
     async fetchDeathMarkers() {
         if (!this.currentGuildId) return;
-        
+
         try {
             const hoursAgo = this.deathMarkersTimeRange;
             const startTime = Math.floor(Date.now() / 1000) - (hoursAgo * 3600);
-            
+
             const response = await fetch(`/api/statistics/deaths/${this.currentGuildId}?startTime=${startTime}&serverId=${this.serverData.serverId}`);
             if (response.ok) {
                 const deaths = await response.json();
                 const now = Date.now();
                 const fiveMinutesMs = 5 * 60 * 1000;
-                
+
                 // Add fetchedAt timestamp and calculate expiry
                 this.deathMarkersData = deaths.map(death => ({
                     ...death,
                     fetchedAt: now,
                     expiresAt: now + fiveMinutesMs
                 }));
-                
+
                 console.log(`[WebUI] Loaded ${this.deathMarkersData.length} death markers (last ${hoursAgo}h, 5min expiry)`);
                 this.dirtyDynamic = true;
                 this.needsRender = true;
@@ -758,7 +945,7 @@ class RustPlusWebUI {
             this.deathMarkersData = [];
         }
     }
-    
+
     addPersistentPatrolMarker(type, x, y, location, timestamp = null) {
         const now = timestamp || Date.now();
         const marker = {
@@ -770,25 +957,25 @@ class RustPlusWebUI {
             expiresAt: now + this.PATROL_MARKER_DURATION,
             isGridPosition: x === null || y === null
         };
-        
+
         // Remove duplicate markers (by timestamp for grid positions, by location for world coords)
         if (marker.isGridPosition) {
-            this.persistentPatrolMarkers = this.persistentPatrolMarkers.filter(m => 
+            this.persistentPatrolMarkers = this.persistentPatrolMarkers.filter(m =>
                 !(m.type === type && m.timestamp === now)
             );
         } else {
-            this.persistentPatrolMarkers = this.persistentPatrolMarkers.filter(m => 
+            this.persistentPatrolMarkers = this.persistentPatrolMarkers.filter(m =>
                 !(m.type === type && Math.abs(m.x - x) < 10 && Math.abs(m.y - y) < 10)
             );
         }
-        
+
         this.persistentPatrolMarkers.push(marker);
         this.savePersistentMarkers();
         console.log(`[WebUI] Added persistent ${type} death marker at ${location} (expires in 5min)`);
         this.dirtyDynamic = true;
         this.needsRender = true;
     }
-    
+
     cleanExpiredPatrolMarkers() {
         const now = Date.now();
         const before = this.persistentPatrolMarkers.length;
@@ -799,7 +986,7 @@ class RustPlusWebUI {
             this.needsRender = true;
         }
     }
-    
+
     savePersistentMarkers() {
         if (!this.currentGuildId) return;
         try {
@@ -808,7 +995,7 @@ class RustPlusWebUI {
             console.error('[WebUI] Failed to save persistent markers:', e);
         }
     }
-    
+
     loadPersistentMarkers() {
         if (!this.currentGuildId) return;
         try {
@@ -833,10 +1020,10 @@ class RustPlusWebUI {
             img.onload = () => {
                 this.mapImage = img;
                 this.minimapBaseDirty = true;
-                
+
                 // Use handleResize to properly size canvases
                 this.handleResize();
-                
+
                 // Enable high quality rendering on all contexts
                 [this.backgroundCtx, this.staticCtx, this.dynamicCtx].forEach(ctx => {
                     if (ctx) {
@@ -872,10 +1059,196 @@ class RustPlusWebUI {
         document.getElementById('serverInfo').innerHTML = `
             <p><strong>Server:</strong> ${info.name}</p>
             <p><strong>Map:</strong> ${info.map} (${info.mapSize}m)</p>
-            <p><strong>Players:</strong> ${info.players}/${info.maxPlayers}</p>
+            <p style="display: flex; align-items: center;">
+                <strong>Players:</strong>&nbsp;${info.players}/${info.maxPlayers} 
+                <button id="viewPlayerListBtn" class="player-list-btn" title="View Full List via BattleMetrics">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    LIST
+                </button>
+            </p>
             ${info.queuedPlayers > 0 ? `<p><strong>Queue:</strong> ${info.queuedPlayers}</p>` : ''}
             <p><strong>Time:</strong> ${timeOfDay} (${gameTime})</p>
             <p><strong>Wipe:</strong> ${this.formatWipeTime(info.wipeTime)}</p>`;
+
+        // Re-attach listener since we overwrote the HTML
+        const btn = document.getElementById('viewPlayerListBtn');
+        if (btn) {
+            btn.addEventListener('click', () => this.openPlayerList());
+        }
+    }
+
+    setupPlayerListModal() {
+        const modal = document.getElementById('playerListModal');
+        const closeBtn = document.getElementById('closePlayerListBtn');
+        const searchInput = document.getElementById('playerSearch');
+
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => modal.classList.remove('open'));
+        }
+        // Close on click outside
+        window.addEventListener('click', (e) => {
+            if (e.target === modal) modal.classList.remove('open');
+        });
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => this.renderPlayerList(e.target.value));
+        }
+    }
+
+    async openPlayerList() {
+        const modal = document.getElementById('playerListModal');
+        if (!modal) return;
+
+        modal.classList.add('open');
+        this.renderPlayerList();
+
+        // Fetch full list from backend using internal bot data (synced with Discord bot)
+        if (!this.fullPlayerList || (Date.now() - (this.lastPlayerFetch || 0) > 30000)) {
+            const container = document.getElementById('playerListContainer');
+            container.innerHTML = '<div class="vending-loading">Loading player data from bot...</div>';
+
+            try {
+                // Use currentGuildId or fallback to serverData
+                const guildId = this.currentGuildId || this.serverData?.guildId;
+                if (!guildId) throw new Error('No active guild selected');
+
+                const response = await fetch(`/api/battlemetrics/players/${guildId}`);
+                if (!response.ok) throw new Error((await response.json()).error || 'Failed to fetch');
+
+                const data = await response.json();
+
+                if (data.players) {
+                    this.fullPlayerList = data.players;
+                    this.lastPlayerFetch = Date.now();
+                    this.battleMetricsUrl = data.battleMetricsUrl;
+
+                    // Update BM Link
+                    const bmLink = document.getElementById('bmLink');
+                    if (bmLink && data.battleMetricsUrl) {
+                        bmLink.href = data.battleMetricsUrl;
+                    }
+
+                    this.renderPlayerList();
+                } else {
+                    throw new Error('No players found');
+                }
+            } catch (e) {
+                console.error('Failed to fetch players:', e);
+                const container = document.getElementById('playerListContainer');
+                if (container) {
+                    container.innerHTML = `<div class="error">Failed to load full list. Showing team members only.<br><small>${e.message}</small></div>`;
+                    // Fallback to team members after delay
+                    setTimeout(() => this.renderPlayerList(), 2000);
+                }
+            }
+        }
+    }
+
+    renderPlayerList(filter = '') {
+        const container = document.getElementById('playerListContainer');
+        const countDisplay = document.getElementById('playerCountDisplay');
+        if (!container) return;
+
+        // Use fetched list OR fallback to team
+        let players = [];
+
+        if (this.fullPlayerList && this.fullPlayerList.length > 0) {
+            players = this.fullPlayerList.map(p => ({
+                name: p.name,
+                id: p.id,
+                source: 'BattleMetrics',
+                isOnline: true,
+                time: p.time // Available from our new backend
+            }));
+        } else if (this.serverData?.team?.players) {
+            players = this.serverData.team.players.map(p => ({
+                name: p.name,
+                id: p.steamId,
+                source: 'Team',
+                isOnline: p.isOnline,
+                time: ''
+            }));
+        }
+
+        container.innerHTML = '';
+
+        const filtered = players.filter(p =>
+            p.name.toLowerCase().includes(filter.toLowerCase())
+        );
+
+        if (countDisplay) countDisplay.textContent = filtered.length;
+
+        if (filtered.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:2rem; color:var(--text-secondary);">No players found.</div>';
+            return;
+        }
+
+        // Create a map of team members for faster lookup
+        const teamMap = new Map();
+        if (this.serverData?.team?.players) {
+            this.serverData.team.players.forEach(p => {
+                // normalize name for loose matching if needed, but steamID is key
+                teamMap.set(p.name, p.steamId);
+            });
+        }
+
+        filtered.forEach(p => {
+            const div = document.createElement('div');
+            div.className = 'vm-item';
+            div.style.background = 'rgba(255, 255, 255, 0.03)';
+            div.style.padding = '8px 12px';
+
+            const statusColor = 'var(--success)';
+
+            // Determine URLs
+            const bmUrl = p.source === 'BattleMetrics'
+                ? `https://www.battlemetrics.com/players/${p.id}`
+                : `https://www.battlemetrics.com/players?filter[search]=${p.id}`;
+
+            // Try to find SteamID
+            let steamId = p.source === 'Team' ? p.id : teamMap.get(p.name);
+            const steamUrl = steamId
+                ? `https://steamcommunity.com/profiles/${steamId}`
+                : `https://steamcommunity.com/search/users/#text=${encodeURIComponent(p.name)}`;
+
+            div.innerHTML = `
+                <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div style="width:8px; height:8px; border-radius:50%; background:${statusColor};" title="Online"></div>
+                        <div style="display:flex; flex-direction:column;">
+                            <span style="font-weight:bold; color:var(--text-primary);">${p.name}</span>
+                            <div style="font-size:0.75rem; color:var(--text-secondary); display:flex; gap:8px;">
+                                <span>${p.source === 'Team' ? 'Team Member' : 'Player'}</span>
+                                ${p.time ? `<span style="color:var(--accent);">⏱️ ${p.time}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                   <div class="profile-actions">
+                        <!-- Steam Group -->
+                        <div class="profile-btn-group">
+                            <a href="${steamUrl}" target="_blank" class="profile-btn steam" title="Steam Profile">
+                                <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                                Steam
+                            </a>
+                            <button class="copy-btn" onclick="navigator.clipboard.writeText('${steamUrl}').then(() => this.style.color='var(--success)'); setTimeout(() => this.style.color='', 1000);" title="Copy Link">
+                                <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            </button>
+                        </div>
+                        
+                        <!-- BM Group -->
+                        <div class="profile-btn-group">
+                            <a href="${bmUrl}" target="_blank" class="profile-btn bm" title="BattleMetrics Profile">
+                                <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                                BM
+                            </a>
+                             <button class="copy-btn" onclick="navigator.clipboard.writeText('${bmUrl}').then(() => this.style.color='var(--success)'); setTimeout(() => this.style.color='', 1000);" title="Copy Link">
+                                <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+        });
     }
 
     updateTeamList() {
@@ -885,7 +1258,7 @@ class RustPlusWebUI {
             teamList.innerHTML = '<p class="loading">No team members</p>';
             return;
         }
-        
+
         const followSelect = document.getElementById('followPlayer');
         if (followSelect) {
             const currentVal = followSelect.value;
@@ -894,7 +1267,7 @@ class RustPlusWebUI {
                 followSelect.add(new Option(p.name, p.steamId, false, p.steamId === currentVal));
             });
         }
-        
+
         teamList.innerHTML = '';
         team.players.forEach(p => {
             const div = document.createElement('div');
@@ -914,6 +1287,49 @@ class RustPlusWebUI {
         const events = this.serverData?.events?.all || [];
         const eventsList = document.getElementById('eventsList');
         eventsList.innerHTML = events.length === 0 ? '<p class="loading">No recent events</p>' : '';
+
+        // Primera carga: inicializar sin crear notificaciones
+        if (!this.previousEvents) {
+            this.previousEvents = [...events];
+
+            // Renderizar lista de eventos
+            events.slice(0, 10).forEach(event => {
+                const div = document.createElement('div');
+                div.className = 'event-item';
+                div.textContent = event;
+                eventsList.appendChild(div);
+            });
+            return; // NO crear notificaciones en la primera carga
+        }
+
+        // Comparar con eventos anteriores (solo después de la primera carga)
+        const newEvents = events.filter(event => !this.previousEvents.includes(event));
+
+        // Crear notificaciones SOLO para eventos verdaderamente nuevos
+        newEvents.forEach(event => {
+            if (this.notificationManager) {
+                // Determinar el tipo de evento basado en el contenido del mensaje
+                let eventType = 'cargo'; // Por defecto
+                const eventLower = event.toLowerCase();
+
+                if (eventLower.includes('cargo') || eventLower.includes('barco')) {
+                    eventType = 'cargo';
+                } else if (eventLower.includes('heli') || eventLower.includes('helicóptero') || eventLower.includes('helicopter')) {
+                    eventType = 'heli';
+                } else if (eventLower.includes('crate') || eventLower.includes('caja')) {
+                    eventType = 'crate';
+                } else if (eventLower.includes('raid') || eventLower.includes('ataque')) {
+                    eventType = 'raid';
+                }
+
+                this.notificationManager.addNotification(eventType, event);
+            }
+        });
+
+        // Guardar eventos actuales para la próxima comparación
+        this.previousEvents = [...events];
+
+        // Renderizar lista de eventos
         events.slice(0, 10).forEach(event => {
             const div = document.createElement('div');
             div.className = 'event-item';
@@ -925,18 +1341,18 @@ class RustPlusWebUI {
     startRenderLoop() {
         const render = (timestamp) => {
             const elapsed = timestamp - this.lastRenderTime;
-            
+
             // Only render at most 60fps
             if (elapsed < 16 && !this.dirtyStatic && !this.dirtyDynamic) {
                 requestAnimationFrame(render);
                 return;
             }
-            
+
             if (this.dirtyStatic) {
                 this.drawStaticLayers();
                 this.dirtyStatic = false;
             }
-            
+
             if (this.needsRender || this.dirtyDynamic) {
                 this.applyTransform();
                 this.drawDynamicLayers();
@@ -945,12 +1361,12 @@ class RustPlusWebUI {
                 this.dirtyDynamic = false;
                 this.lastRenderTime = timestamp;
             }
-            
+
             requestAnimationFrame(render);
         };
         requestAnimationFrame(render);
     }
-    
+
     applyTransform() {
         // Don't use CSS transforms - they pixelate everything
         // Instead we'll use canvas context transforms when drawing
@@ -958,7 +1374,7 @@ class RustPlusWebUI {
         canvases.forEach(c => {
             if (c) c.style.transform = 'none';
         });
-        
+
         // Mark layers as dirty to redraw at proper scale
         this.dirtyStatic = true;
         this.dirtyDynamic = true;
@@ -969,29 +1385,29 @@ class RustPlusWebUI {
         if (!this.mapImage) return;
 
         this.backgroundCtx.clearRect(0, 0, this.backgroundCanvas.width, this.backgroundCanvas.height);
-        
+
         // Save context state
         this.backgroundCtx.save();
-        
+
         // Apply zoom and pan transforms
         this.backgroundCtx.translate(this.backgroundCanvas.width / 2, this.backgroundCanvas.height / 2);
         this.backgroundCtx.scale(this.scale, this.scale);
         this.backgroundCtx.translate(this.offsetX - this.mapImage.width / 2, this.offsetY - this.mapImage.height / 2);
-        
+
         // Use high quality image rendering
         this.backgroundCtx.imageSmoothingEnabled = true;
         this.backgroundCtx.imageSmoothingQuality = 'high';
         this.backgroundCtx.drawImage(this.mapImage, 0, 0);
-        
+
         this.backgroundCtx.restore();
 
         this.staticCtx.clearRect(0, 0, this.staticCanvas.width, this.staticCanvas.height);
-        
+
         this.staticCtx.save();
         this.staticCtx.translate(this.staticCanvas.width / 2, this.staticCanvas.height / 2);
         this.staticCtx.scale(this.scale, this.scale);
         this.staticCtx.translate(this.offsetX - this.mapImage.width / 2, this.offsetY - this.mapImage.height / 2);
-        
+
         if (this.serverData) {
             if (this.controls.showGrid) this.drawGrid(this.staticCtx);
             if (this.controls.showMonuments) this.drawMonuments(this.staticCtx);
@@ -999,22 +1415,22 @@ class RustPlusWebUI {
                 this.drawVendingMachines(this.staticCtx);
             }
         }
-        
+
         this.staticCtx.restore();
     }
-    
+
     drawDynamicLayers() {
         this.dynamicCtx.clearRect(0, 0, this.dynamicCanvas.width, this.dynamicCanvas.height);
         if (!this.serverData || !this.mapImage) return;
-        
+
         const ctx = this.dynamicCtx;
-        
+
         // Apply zoom and pan transforms
         ctx.save();
         ctx.translate(this.dynamicCanvas.width / 2, this.dynamicCanvas.height / 2);
         ctx.scale(this.scale, this.scale);
         ctx.translate(this.offsetX - this.mapImage.width / 2, this.offsetY - this.mapImage.height / 2);
-        
+
         // Check if replay mode should handle rendering
         if (this.mapReplay?.isReplayMode && this.serverData.map) {
             const rendered = this.mapReplay.render(ctx, this.serverData.map);
@@ -1023,7 +1439,7 @@ class RustPlusWebUI {
                 return; // Replay handled all rendering
             }
         }
-        
+
         // Normal rendering
         if (this.controls.showRadZones && this.serverData.mapMarkers?.genericRadiuses) this.drawRadZones(ctx);
         if (this.controls.showEvents) this.drawEvents(ctx);
@@ -1034,14 +1450,14 @@ class RustPlusWebUI {
         // Draw historical death markers (only when enabled)
         if (this.controls.showDeathMarkers && !this.mapReplay?.isReplayMode) this.drawDeathMarkers(ctx);
         if (this.controls.showMarkers && this.serverData.markers) this.drawCustomMarkers(ctx);
-        
+
         // Render live trails with colors
         if (this.controls.showTrails && !this.mapReplay?.isReplayMode) {
             this.drawPlayerTrails(ctx);
         }
-        
+
         if (this.controls.showPlayers && this.serverData.team?.players) this.drawPlayers(ctx);
-        
+
         ctx.restore();
     }
 
@@ -1055,7 +1471,7 @@ class RustPlusWebUI {
 
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
         ctx.lineWidth = 1 / this.scale;
-        
+
         for (let i = 0; i <= numCells; i++) {
             const x = this.worldRect.x + i * cellSize;
             ctx.beginPath();
@@ -1063,7 +1479,7 @@ class RustPlusWebUI {
             ctx.lineTo(x, this.worldRect.y + this.worldRect.height);
             ctx.stroke();
         }
-        
+
         for (let i = 0; i <= numCells; i++) {
             const y = this.worldRect.y + i * cellSize;
             ctx.beginPath();
@@ -1071,13 +1487,13 @@ class RustPlusWebUI {
             ctx.lineTo(this.worldRect.x + this.worldRect.width, y);
             ctx.stroke();
         }
-        
+
         if (this.scale < 0.8) return; // Hide labels when zoomed out
-        
+
         ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
         ctx.font = `${14 / this.scale}px Arial`;
         ctx.textAlign = 'center';
-        
+
         for (let i = 0; i < numCells; i++) {
             const col = this.columnLabel(i);
             for (let j = 0; j < numCells; j++) {
@@ -1096,40 +1512,40 @@ class RustPlusWebUI {
         } while (index >= 0);
         return s;
     }
-    
+
     worldToGrid(worldX, worldY) {
         if (!this.serverData?.info?.mapSize) return '??';
-        
+
         const mapSize = this.serverData.info.mapSize;
         const gridSize = 150;
         const numCells = Math.ceil(mapSize / gridSize);
-        
+
         const cellX = Math.floor(worldX / gridSize);
         const cellY = Math.floor((mapSize - worldY) / gridSize);
-        
+
         const col = this.columnLabel(cellX);
         const row = cellY;
-        
+
         return `${col}${row}`;
     }
 
     drawMonuments(ctx) {
         const monuments = this.serverData.map?.monuments;
         if (!monuments) return;
-        
+
         monuments.forEach(m => {
             const { x, y } = this.worldToCanvas(m.x, m.y);
             const size = 10 / this.scale;
-            
+
             // Get formatted monument info
             let token = (m.token || '').toLowerCase();
-            
+
             // Handle prefab paths - extract the key part
             if (token.includes('/')) {
                 // Extract filename from path
                 const parts = token.split('/');
                 const filename = parts[parts.length - 1].replace('.prefab', '');
-                
+
                 // Map common prefab patterns
                 if (token.includes('underwater')) {
                     token = 'underwater_lab';
@@ -1139,14 +1555,14 @@ class RustPlusWebUI {
                     token = filename.replace(/[-_]/g, '_');
                 }
             }
-            
+
             token = token.replace(/\s+/g, '_');
-            
-            const monumentInfo = this.monumentNames[token] || { 
-                name: m.token || 'Monument', 
-                emoji: '📍' 
+
+            const monumentInfo = this.monumentNames[token] || {
+                name: m.token || 'Monument',
+                emoji: '📍'
             };
-            
+
             ctx.fillStyle = 'rgba(206, 65, 43, 0.3)';
             ctx.strokeStyle = 'rgba(206, 65, 43, 0.8)';
             ctx.lineWidth = 2 / this.scale;
@@ -1154,14 +1570,14 @@ class RustPlusWebUI {
             ctx.arc(x, y, size, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
-            
+
             if (this.scale > 0.5) {
                 // Draw emoji
                 ctx.font = `${16 / this.scale}px Arial`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText(monumentInfo.emoji, x, y);
-                
+
                 // Draw name with outline for better readability
                 if (this.scale > 0.8) {
                     ctx.font = `bold ${11 / this.scale}px Arial`;
@@ -1169,13 +1585,13 @@ class RustPlusWebUI {
                     ctx.lineWidth = 3 / this.scale;
                     ctx.lineJoin = 'round';
                     ctx.strokeText(monumentInfo.name, x, y - size - 8 / this.scale);
-                    
+
                     ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
                     ctx.fillText(monumentInfo.name, x, y - size - 8 / this.scale);
                 }
             }
         });
-        
+
         // Draw death markers if in replay mode
         if (this.mapReplay?.isReplayMode) {
             const deathMarkers = this.mapReplay.getMinimapDeathMarkers();
@@ -1185,7 +1601,7 @@ class RustPlusWebUI {
                     const normalizedY = 1 - (death.y / mapData.height);
                     const minimapX = centerX + (normalizedX - 0.5) * (mapData.width * this.minimapZoom) + panOffsetX;
                     const minimapY = centerY + (normalizedY - 0.5) * (mapData.height * this.minimapZoom) + panOffsetY;
-                    
+
                     // Draw death skull
                     this.minimapCtx.fillStyle = '#ff0000';
                     this.minimapCtx.strokeStyle = '#fff';
@@ -1195,7 +1611,7 @@ class RustPlusWebUI {
                     this.minimapCtx.textBaseline = 'middle';
                     this.minimapCtx.strokeText('💀', minimapX, minimapY);
                     this.minimapCtx.fillText('💀', minimapX, minimapY);
-                    
+
                     // Draw player name
                     this.minimapCtx.font = 'bold 8px Arial';
                     this.minimapCtx.fillStyle = '#fff';
@@ -1211,13 +1627,13 @@ class RustPlusWebUI {
     drawRadZones(ctx) {
         const radZones = this.serverData.mapMarkers.genericRadiuses;
         if (!radZones?.length) return;
-        
+
         const scale = this.worldRect.width / this.serverData.info.mapSize;
-        
+
         ctx.fillStyle = 'rgba(46, 204, 113, 0.2)';
         ctx.strokeStyle = 'rgba(46, 204, 113, 0.6)';
         ctx.lineWidth = 2 / this.scale;
-        
+
         radZones.forEach(zone => {
             const { x, y } = this.worldToCanvas(zone.x, zone.y);
             const radius = zone.radius * scale;
@@ -1231,43 +1647,53 @@ class RustPlusWebUI {
     drawEvents(ctx) {
         const markers = this.serverData.mapMarkers;
         if (!markers) return;
-        
-        const drawMarker = (items, color, emoji) => {
-            if (!items) return;
+
+        const drawMarkerImg = (items, img, sizeMult = 1, rotationOffset = Math.PI / 2) => {
+            if (!items || !img) return;
             items.forEach(item => {
                 const { x, y } = this.worldToCanvas(item.x, item.y);
-                const size = 15 / this.scale;
-                ctx.fillStyle = `rgba(${color}, 0.8)`;
-                ctx.strokeStyle = `rgba(${color}, 1)`;
-                ctx.lineWidth = 2 / this.scale;
-                ctx.beginPath();
-                ctx.arc(x, y, size, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
-                ctx.fillStyle = 'white';
-                ctx.font = `bold ${12 / this.scale}px Arial`;
-                ctx.textAlign = 'center';
-                ctx.fillText(emoji, x, y + size / 2.5);
+                const size = (28 * sizeMult) / this.scale;
+
+                if (img.complete) {
+                    ctx.save();
+                    ctx.translate(x, y);
+
+                    // Rotation logic
+                    if (item.rotation !== undefined) {
+                        // Apply rotation offset (most icons point Right/East, so -90deg makes them point North at 0)
+                        const angleRad = (item.rotation) * (Math.PI / 180) + rotationOffset;
+                        ctx.rotate(angleRad);
+                    }
+
+                    ctx.drawImage(img, -size / 2, -size / 2, size, size);
+                    ctx.restore();
+                } else {
+                    ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+                    ctx.beginPath();
+                    ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
             });
         };
-        
-        drawMarker(markers.cargoShips, '255, 215, 0', '🚢');
-        drawMarker(markers.patrolHelicopters, '255, 0, 0', '🚁');
-        drawMarker(markers.ch47s, '128, 0, 128', 'CH47');
+
+        // Draw markers using correct images and rotation offset
+        drawMarkerImg(markers.cargoShips, this.markerImages.cargo, 1.8); // Cargo ship is big
+        drawMarkerImg(markers.ch47s, this.markerImages.chinook, 1.2);
+        drawMarkerImg(markers.patrolHelicopters, this.markerImages.heli, 1.2);
     }
-    
+
     drawDeathMarkers(ctx) {
         if (!this.deathMarkersData?.length) return;
-        
+
         const now = Date.now();
-        
+
         this.deathMarkersData.forEach(death => {
             if (!death.x || !death.y) return;
             if (death.expiresAt && death.expiresAt <= now) return; // Skip expired
-            
+
             const { x, y } = this.worldToCanvas(death.x, death.y);
             const size = 12 / this.scale;
-            
+
             // Draw red circle background
             ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
             ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
@@ -1276,7 +1702,7 @@ class RustPlusWebUI {
             ctx.arc(x, y, size, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
-            
+
             // Draw skull emoji
             ctx.font = `bold ${16 / this.scale}px Arial`;
             ctx.textAlign = 'center';
@@ -1286,7 +1712,7 @@ class RustPlusWebUI {
             ctx.lineWidth = 2 / this.scale;
             ctx.strokeText('💀', x, y);
             ctx.fillText('💀', x, y);
-            
+
             // Draw player name if zoomed in enough
             if (this.scale > 0.5 && death.player_name) {
                 ctx.font = `bold ${10 / this.scale}px Arial`;
@@ -1295,7 +1721,7 @@ class RustPlusWebUI {
                 ctx.strokeText(death.player_name, x, y + size + 10 / this.scale);
                 ctx.fillStyle = '#ffffff';
                 ctx.fillText(death.player_name, x, y + size + 10 / this.scale);
-                
+
                 // Draw time since death
                 const deathTime = death.death_time || death.timestamp || 0;
                 const timeSince = Math.floor((Date.now() / 1000 - deathTime) / 60);
@@ -1306,23 +1732,23 @@ class RustPlusWebUI {
             }
         });
     }
-    
+
     drawRecentTeamDeaths(ctx) {
         if (!this.recentTeamDeaths?.length) return;
-        
+
         const now = Date.now();
-        
+
         this.recentTeamDeaths.forEach(death => {
             if (!death.x || !death.y) return;
             if (death.expiresAt <= now) return; // Skip expired
-            
+
             const { x, y } = this.worldToCanvas(death.x, death.y);
             const size = 12 / this.scale;
-            
+
             // Draw red circle background with pulsing effect
             const pulsePhase = (now % 1500) / 1500;
             const pulseOpacity = 0.4 + 0.2 * Math.sin(pulsePhase * Math.PI * 2);
-            
+
             ctx.fillStyle = `rgba(255, 0, 0, ${pulseOpacity})`;
             ctx.strokeStyle = 'rgba(255, 0, 0, 0.95)';
             ctx.lineWidth = 2 / this.scale;
@@ -1330,7 +1756,7 @@ class RustPlusWebUI {
             ctx.arc(x, y, size, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
-            
+
             // Draw skull emoji
             ctx.font = `bold ${16 / this.scale}px Arial`;
             ctx.textAlign = 'center';
@@ -1340,7 +1766,7 @@ class RustPlusWebUI {
             ctx.lineWidth = 2 / this.scale;
             ctx.strokeText('💀', x, y);
             ctx.fillText('💀', x, y);
-            
+
             // Draw player name
             if (this.scale > 0.5) {
                 ctx.font = `bold ${10 / this.scale}px Arial`;
@@ -1349,7 +1775,7 @@ class RustPlusWebUI {
                 ctx.strokeText(death.player_name, x, y + size + 10 / this.scale);
                 ctx.fillStyle = '#ffffff';
                 ctx.fillText(death.player_name, x, y + size + 10 / this.scale);
-                
+
                 // Draw time remaining
                 const timeRemaining = Math.ceil((death.expiresAt - now) / 1000 / 60);
                 const timeText = `${timeRemaining}m`;
@@ -1359,28 +1785,28 @@ class RustPlusWebUI {
             }
         });
     }
-    
+
     drawPersistentPatrolMarkers(ctx) {
         if (!this.persistentPatrolMarkers?.length) return;
-        
+
         const now = Date.now();
         this.persistentPatrolMarkers.forEach(marker => {
             if (marker.expiresAt <= now) return;
-            
+
             // Skip grid-only positions as they're shown in minimap info bar
             if (marker.isGridPosition) return;
-            
+
             // For world coordinates (if available)
             if (!marker.x || !marker.y) return;
-            
+
             const { x, y } = this.worldToCanvas(marker.x, marker.y);
             const size = 25 / this.scale;
-            
+
             // Pulsing circle
             const pulsePhase = (now % 2000) / 2000;
             const pulseSize = size * (1 + 0.4 * Math.sin(pulsePhase * Math.PI * 2));
             const opacity = 0.5 + 0.3 * Math.sin(pulsePhase * Math.PI * 2);
-            
+
             ctx.fillStyle = `rgba(255, 69, 0, ${opacity})`;
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
             ctx.lineWidth = 3 / this.scale;
@@ -1388,7 +1814,7 @@ class RustPlusWebUI {
             ctx.arc(x, y, pulseSize, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
-            
+
             // Draw explosion emoji
             ctx.font = `bold ${32 / this.scale}px Arial`;
             ctx.textAlign = 'center';
@@ -1398,19 +1824,19 @@ class RustPlusWebUI {
             ctx.lineWidth = 2 / this.scale;
             ctx.strokeText('💥', x, y);
             ctx.fillText('💥', x, y);
-            
+
             // Draw label
             if (this.scale > 0.5) {
                 const timeLeft = Math.ceil((marker.expiresAt - now) / 60000);
                 const timeText = timeLeft > 1 ? `${timeLeft}m` : '<1m';
-                
+
                 ctx.font = `bold ${14 / this.scale}px Arial`;
                 ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)';
                 ctx.lineWidth = 3 / this.scale;
                 ctx.strokeText(`Patrol Down - ${marker.location}`, x, y + size + 12 / this.scale);
                 ctx.fillStyle = '#ffffff';
                 ctx.fillText(`Patrol Down - ${marker.location}`, x, y + size + 12 / this.scale);
-                
+
                 ctx.font = `bold ${12 / this.scale}px Arial`;
                 ctx.fillStyle = '#ff4500';
                 ctx.strokeText(`⏱️ ${timeText}`, x, y + size + 26 / this.scale);
@@ -1422,16 +1848,21 @@ class RustPlusWebUI {
     drawVendingMachines(ctx) {
         const machines = this.serverData.mapMarkers.vendingMachines;
         if (!machines?.length || this.scale < 1.2) return;
-        
-        ctx.fillStyle = 'rgba(52, 152, 219, 0.8)';
-        ctx.strokeStyle = 'rgba(52, 152, 219, 1)';
-        ctx.lineWidth = 2 / this.scale;
+
+        const img = this.markerImages.shop;
+        const size = 16 / this.scale; // Same diameter as the previous 8-radius circle
+
         machines.forEach(vm => {
             const { x, y } = this.worldToCanvas(vm.x, vm.y);
-            ctx.beginPath();
-            ctx.arc(x, y, 8 / this.scale, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
+            if (img.complete) {
+                ctx.drawImage(img, x - size / 2, y - size / 2, size, size);
+            } else {
+                // Fallback while loading
+                ctx.fillStyle = 'rgba(52, 152, 219, 0.8)';
+                ctx.beginPath();
+                ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
         });
     }
 
@@ -1442,15 +1873,15 @@ class RustPlusWebUI {
     drawPlayerTrails(ctx) {
         const players = this.serverData.team?.players || [];
         if (!players.length) return;
-        
+
         players.forEach(p => {
             if (!p.isOnline || !p.isAlive) return;
-            
+
             const trails = this.playerTrails[p.steamId] || [];
-            
+
             // Clean old trails using configurable duration
             this.playerTrails[p.steamId] = trails.filter(t => t.time > Date.now() - this.trailDuration);
-            
+
             if (trails.length > 1) {
                 // Use player-specific color
                 const color = this.getPlayerColor(p.steamId);
@@ -1459,7 +1890,7 @@ class RustPlusWebUI {
                 ctx.lineCap = 'round';
                 ctx.lineJoin = 'round';
                 ctx.globalAlpha = 0.6;
-                
+
                 ctx.beginPath();
                 ctx.moveTo(trails[0].x, trails[0].y);
                 for (let i = 1; i < trails.length; i++) {
@@ -1474,15 +1905,15 @@ class RustPlusWebUI {
     drawPlayers(ctx) {
         const players = this.serverData.team?.players;
         if (!players) return;
-        
+
         players.forEach(p => {
             if (!p.isOnline) return;
-            
+
             const { x, y } = this.worldToCanvas(p.x, p.y);
             const size = 10 / this.scale;
             const avatar = this.playerAvatars[p.steamId];
             const playerColor = this.getPlayerColor(p.steamId);
-            
+
             // Draw avatar if loaded, otherwise draw colored circle
             if (avatar) {
                 ctx.save();
@@ -1491,7 +1922,7 @@ class RustPlusWebUI {
                 ctx.clip();
                 ctx.drawImage(avatar, x - size, y - size, size * 2, size * 2);
                 ctx.restore();
-                
+
                 // Draw colored border with player's unique color (dimmed if dead)
                 ctx.strokeStyle = p.isAlive ? playerColor : `${playerColor}80`;
                 ctx.lineWidth = 2 / this.scale;
@@ -1508,7 +1939,7 @@ class RustPlusWebUI {
                 ctx.fill();
                 ctx.stroke();
             }
-            
+
             if (this.controls.showPlayerNames && this.scale > 0.7) {
                 ctx.fillStyle = 'white';
                 ctx.strokeStyle = 'black';
@@ -1523,13 +1954,13 @@ class RustPlusWebUI {
 
     renderMinimap() {
         if (!this.minimapCtx || !this.serverData) return;
-        
+
         const ctx = this.minimapCtx;
         const size = this.minimapSize;
         ctx.clearRect(0, 0, size, size);
-        
+
         const centerPlayer = this.serverData.team?.players.find(p => p.steamId === this.followedPlayerId && p.isOnline) || this.serverData.team?.players.find(p => p.isOnline);
-        
+
         if (!centerPlayer || !this.worldRect || !this.mapImage || !this.minimapBaseCanvas) {
             // Fallback if no player or map
             if (this.mapImage) ctx.drawImage(this.mapImage, 0, 0, size, size);
@@ -1552,11 +1983,11 @@ class RustPlusWebUI {
 
             this.minimapBaseDirty = false;
         }
-        
+
         // Get player position in world coordinates and convert to canvas coordinates
         // accounting for the canvas transforms (scale and offset)
         const { x: playerX, y: playerY } = this.worldToCanvas(centerPlayer.x, centerPlayer.y);
-        
+
         // Now apply the canvas transform to get the actual pixel position on the transformed canvas
         const viewSize = (this.minimapBaseCanvas.width / this.minimapZoom);
         const centerX = playerX - this.minimapPanX;
@@ -1587,21 +2018,21 @@ class RustPlusWebUI {
         } else if (dy < 0) {
             ctx.drawImage(this.minimapBaseCanvas, sx, sy + viewSize - 1, viewSize, 1, dx, size + dy, size, -dy);
         }
-        
+
         this.serverData.team?.players.forEach(p => {
             if (!p.isOnline) return;
             const { x: px, y: py } = this.worldToCanvas(p.x, p.y);
-            
+
             // Apply the same transform as for center player
             const mx = (px - desiredSx) * miniScale;
             const my = (py - desiredSy) * miniScale;
-            
+
             if (mx >= 0 && mx <= size && my >= 0 && my <= size) {
                 const isCenter = p.steamId === centerPlayer.steamId;
                 const markerSize = 10;
                 const avatar = this.playerAvatars[p.steamId];
                 const playerColor = this.getPlayerColor(p.steamId);
-                
+
                 // Draw avatar if loaded
                 if (avatar) {
                     ctx.save();
@@ -1610,7 +2041,7 @@ class RustPlusWebUI {
                     ctx.clip();
                     ctx.drawImage(avatar, mx - markerSize, my - markerSize, markerSize * 2, markerSize * 2);
                     ctx.restore();
-                    
+
                     // Draw colored border with player's unique color (dimmed if dead)
                     ctx.strokeStyle = p.isAlive ? playerColor : `${playerColor}80`;
                     ctx.lineWidth = 2;
@@ -1627,7 +2058,7 @@ class RustPlusWebUI {
                     ctx.fill();
                     ctx.stroke();
                 }
-                
+
                 if (this.showMinimapPlayerNames && this.minimapZoom > 0.8) {
                     ctx.fillStyle = 'white';
                     ctx.font = `bold ${isCenter ? 12 : 10}px Arial`;
@@ -1639,21 +2070,21 @@ class RustPlusWebUI {
                 }
             }
         });
-        
+
         // Draw recent team deaths on minimap (always shown for 5 minutes)
         if (this.recentTeamDeaths?.length > 0 && !this.mapReplay?.isReplayMode) {
             const now = Date.now();
-            
+
             this.recentTeamDeaths.forEach(death => {
                 if (!death.x || !death.y) return;
                 if (death.expiresAt <= now) return; // Skip expired
-                
+
                 const { x: dx, y: dy } = this.worldToCanvas(death.x, death.y);
-                
+
                 // Apply the same transform
                 const dmx = (dx - desiredSx) * miniScale;
                 const dmy = (dy - desiredSy) * miniScale;
-                
+
                 // Only draw if in view
                 if (dmx >= 0 && dmx <= size && dmy >= 0 && dmy <= size) {
                     // Draw circle background
@@ -1664,7 +2095,7 @@ class RustPlusWebUI {
                     ctx.arc(dmx, dmy, 10, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.stroke();
-                    
+
                     // Draw death skull (brighter red for recent deaths)
                     ctx.fillStyle = '#ff0000';
                     ctx.strokeStyle = '#fff';
@@ -1677,21 +2108,21 @@ class RustPlusWebUI {
                 }
             });
         }
-        
+
         // Draw historical death markers on minimap if enabled
         if (this.controls.showDeathMarkers && this.deathMarkersData?.length > 0 && !this.mapReplay?.isReplayMode) {
             const now = Date.now();
-            
+
             this.deathMarkersData.forEach(death => {
                 if (!death.x || !death.y) return;
                 if (death.expiresAt && death.expiresAt <= now) return; // Skip expired
-                
+
                 const { x: dx, y: dy } = this.worldToCanvas(death.x, death.y);
-                
+
                 // Apply the same transform
                 const dmx = (dx - desiredSx) * miniScale;
                 const dmy = (dy - desiredSy) * miniScale;
-                
+
                 // Only draw if in view
                 if (dmx >= 0 && dmx <= size && dmy >= 0 && dmy <= size) {
                     // Draw circle background
@@ -1702,7 +2133,7 @@ class RustPlusWebUI {
                     ctx.arc(dmx, dmy, 9, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.stroke();
-                    
+
                     // Draw death skull (slightly transparent for historical deaths)
                     ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
                     ctx.strokeStyle = '#fff';
@@ -1715,11 +2146,11 @@ class RustPlusWebUI {
                 }
             });
         }
-        
+
         this.drawMinimapCrosshair(ctx, size);
         this.drawMinimapStatusBar(ctx, size);
     }
-    
+
     drawMinimapCrosshair(ctx, size) {
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
         ctx.lineWidth = 1;
@@ -1736,26 +2167,26 @@ class RustPlusWebUI {
         const time = this.serverData.time;
         const markers = this.serverData.mapMarkers;
         if (!info || !time) return;
-        
+
         // Single line status bar
         const barHeight = 18;
-        
+
         ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
         ctx.fillRect(0, size - barHeight, size, barHeight);
-        
+
         ctx.font = '9px Arial';
         ctx.textAlign = 'left';
-        
+
         let x = 5;
         const y = size - 6;
-        
+
         // Player count
         ctx.fillStyle = '#ffffff';
         let text = `👥 ${info.players}/${info.maxPlayers}`;
         if (info.queuedPlayers > 0) text += ` (${info.queuedPlayers})`;
         ctx.fillText(text, x, y);
         x += ctx.measureText(text).width;
-        
+
         // Time
         const gameTime = this.formatGameTime(time.time);
         const timeIcon = time.isDay ? '☀️' : '🌙';
@@ -1766,7 +2197,7 @@ class RustPlusWebUI {
         text = `${timeIcon} ${gameTime}`;
         ctx.fillText(text, x, y);
         x += ctx.measureText(text).width;
-        
+
         // Events
         if (markers?.patrolHelicopters?.length > 0) {
             markers.patrolHelicopters.forEach(heli => {
@@ -1780,7 +2211,7 @@ class RustPlusWebUI {
                 x += ctx.measureText(text).width;
             });
         }
-        
+
         if (markers?.cargoShips?.length > 0) {
             markers.cargoShips.forEach(cargo => {
                 const grid = this.worldToGrid(cargo.x, cargo.y);
@@ -1793,7 +2224,7 @@ class RustPlusWebUI {
                 x += ctx.measureText(text).width;
             });
         }
-        
+
         if (markers?.ch47s?.length > 0) {
             markers.ch47s.forEach(ch47 => {
                 const grid = this.worldToGrid(ch47.x, ch47.y);
@@ -1806,7 +2237,7 @@ class RustPlusWebUI {
                 x += ctx.measureText(text).width;
             });
         }
-        
+
         const patrolDeath = this.persistentPatrolMarkers?.find(m => m.type === 'heli' && m.expiresAt > Date.now());
         if (patrolDeath) {
             const timeLeft = Math.ceil((patrolDeath.expiresAt - Date.now()) / 60000);
@@ -1831,10 +2262,10 @@ class RustPlusWebUI {
                 video.style.width = '100%';
                 video.style.height = '100%';
                 await video.play();
-                
+
                 // Request PiP with smaller minimum size
                 const pipWindow = await video.requestPictureInPicture();
-                
+
                 // Try to resize to a smaller size if supported
                 if (pipWindow.width && pipWindow.height) {
                     try {
@@ -1900,11 +2331,11 @@ class RustPlusWebUI {
         this.dirtyDynamic = true;
         this.needsRender = true;
     }
-    
+
     toggleFullscreen() {
         const content = document.querySelector('.content');
         content.classList.toggle('fullscreen-map');
-        
+
         // Trigger resize to adjust canvas to new container size
         setTimeout(() => {
             this.handleResize();
@@ -1913,23 +2344,23 @@ class RustPlusWebUI {
 
     loadPlayerAvatar(steamId) {
         if (this.playerAvatars[steamId]) return;
-        
+
         const img = new Image();
-        
+
         // Use placeholder initially
         this.playerAvatars[steamId] = null;
-        
+
         img.onload = () => {
             this.playerAvatars[steamId] = img;
             this.dirtyDynamic = true;
             this.needsRender = true;
         };
-        
+
         img.onerror = () => {
             // If proxy fails, just use default circle (no fallback to prevent 404s)
             this.playerAvatars[steamId] = null;
         };
-        
+
         // Use our server proxy - it handles the Steam CDN redirect properly
         img.src = `/api/avatar/${steamId}`;
     }
@@ -1957,10 +2388,10 @@ class RustPlusWebUI {
     }
 
     // ==================== PLAYER COLORS ====================
-    
+
     async loadPlayerColors() {
         if (!this.serverData?.team?.players) return;
-        
+
         const steamIds = this.serverData.team.players.map(p => p.steamId).join(',');
         try {
             const colors = await this.apiClient.get(`/api/statistics/colors?steamIds=${steamIds}`);
@@ -1977,7 +2408,7 @@ class RustPlusWebUI {
     }
 
     // ==================== MAP REPLAY ====================
-    
+
     setReplayMode(enabled, replayData = null) {
         if (enabled && replayData) {
             this.mapReplay.setReplayData(replayData);
@@ -2000,7 +2431,7 @@ class RustPlusWebUI {
     }
 
     // ==================== HELPER METHODS ====================
-    
+
     gameToCanvasX(x, worldWidth, oceanMargin) {
         if (!this.mapImage) return 0;
         // Convert game coordinates (0 to worldWidth) to normalized map coordinates (0 to 1)
@@ -2019,20 +2450,16 @@ class RustPlusWebUI {
     }
 
     setupStatisticsButton() {
-        // Create statistics button in header
-        const statsButton = document.createElement('button');
-        statsButton.id = 'statsButton';
-        statsButton.className = 'stats-button';
-        statsButton.innerHTML = '📊 Statistics';
-        statsButton.disabled = true; // Disabled until server is selected
+        // Setup existing statistics button
+        const statsButton = document.getElementById('statsButton');
+        if (!statsButton) return;
+
         statsButton.onclick = async () => {
             if (this.statisticsManager) {
                 // Check authentication BEFORE opening panel
                 await this.statisticsManager.checkAuthenticationBeforeOpen();
             }
         };
-        
-        document.querySelector('header').appendChild(statsButton);
     }
 }
 

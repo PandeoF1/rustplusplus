@@ -30,7 +30,7 @@ class StatisticsTracker {
         this.reconnectPending = {};
         this.reconnectMode = {};
         this.sessionReconnectGraceSeconds = 60 * 60; // 1 hour
-        
+
         this.client.log(this.client.intlGet(null, 'infoCap'), 'Statistics: tracker initialized');
         this.setupEventHandlers();
     }
@@ -48,7 +48,7 @@ class StatisticsTracker {
                 this.stopTracking(guildId);
                 continue;
             }
-            
+
             if (!this.trackingIntervals[guildId]) {
                 this.startTracking(guildId);
             }
@@ -70,14 +70,14 @@ class StatisticsTracker {
             this.reconnectPending[guildId] = true;
             this.reconnectMode[guildId] = true;
         }
-        
+
         this.lastKnownPlayerStates[guildId] = {};
-        
+
         // Track player sessions and positions every 30 seconds
         this.trackingIntervals[guildId] = setInterval(() => {
             this.trackGuildData(guildId);
         }, 30000);
-        
+
         // Initial track
         this.trackGuildData(guildId);
     }
@@ -120,30 +120,30 @@ class StatisticsTracker {
                 }
 
                 const currentPlayers = {};
-                
+
                 team.players.forEach(player => {
                     if (!player.steamId) return;
-                    
+
                     currentPlayers[player.steamId] = player;
                     const lastState = this.lastKnownPlayerStates[guildId]?.[player.steamId];
-                    
+
                     // Check if player just came online
                     if (player.isOnline && (!lastState || !lastState.isOnline)) {
                         if (!this.reconnectMode[guildId]) {
                             this.handlePlayerConnect(guildId, serverId, player);
                         }
                     }
-                    
+
                     // Check if player went offline
                     if (!player.isOnline && lastState && lastState.isOnline) {
                         this.handlePlayerDisconnect(guildId, player);
                     }
-                    
+
                     // Check if player died (went from alive to dead while online)
                     if (player.isOnline && !player.isAlive && lastState && lastState.isAlive) {
                         this.handlePlayerDeath(guildId, serverId, player, lastState);
                     }
-                    
+
                     // Track position if online
                     if (player.isOnline && player.x !== undefined && player.y !== undefined) {
                         this.db.recordPlayerPosition(
@@ -156,7 +156,7 @@ class StatisticsTracker {
                         );
                     }
                 });
-                
+
                 // Check for players who left the team
                 if (this.lastKnownPlayerStates[guildId]) {
                     Object.keys(this.lastKnownPlayerStates[guildId]).forEach(steamId => {
@@ -168,7 +168,7 @@ class StatisticsTracker {
                         }
                     });
                 }
-                
+
                 // Update last known states
                 this.lastKnownPlayerStates[guildId] = currentPlayers;
             }
@@ -179,7 +179,7 @@ class StatisticsTracker {
 
     handlePlayerConnect(guildId, serverId, player) {
         this.client.log(this.client.intlGet(null, 'infoCap'), `Statistics: player connected: ${player.name} (${player.steamId})`);
-        
+
         // Check if there's already an active session (shouldn't happen, but handle it)
         const activeSession = this.db.getActiveSession(guildId, player.steamId);
         if (activeSession) {
@@ -188,7 +188,7 @@ class StatisticsTracker {
             }
             this.db.endPlayerSession(guildId, player.steamId);
         }
-        
+
         // Start new session
         this.db.startPlayerSession(guildId, serverId, player.steamId, player.name);
     }
@@ -244,7 +244,7 @@ class StatisticsTracker {
     }
 
     // Public methods for manual tracking
-    
+
     trackChatMessage(guildId, serverId, steamId, playerName, message) {
         this.db.recordChatMessage(guildId, serverId, steamId, playerName, message);
     }
@@ -252,14 +252,14 @@ class StatisticsTracker {
     trackCommand(guildId, serverId, command, steamId = null, playerName = null) {
         this.db.recordCommand(guildId, serverId, command, steamId, playerName);
     }
-    
+
     trackPlayerDeath(guildId, serverId, steamId, playerName, x = null, y = null) {
         this.client.log(this.client.intlGet(null, 'infoCap'), `Statistics: recording death: ${playerName} at (${x}, ${y})`);
         this.db.recordPlayerDeath(guildId, serverId, steamId, playerName, x, y);
     }
 
     // Statistics retrieval
-    
+
     getPlayerStats(guildId, serverId, steamId) {
         return this.db.getPlayerStatistics(guildId, serverId, steamId);
     }
@@ -284,7 +284,65 @@ class StatisticsTracker {
         return this.db.getAllDeaths(guildId, serverId, limit);
     }
 
+    async syncChatHistoryFromDiscord(guildId, limit = 100) {
+        this.client.log(this.client.intlGet(null, 'infoCap'), `Statistics: starting Discord chat sync for guild ${guildId}`);
+        const rustplus = this.client.rustplusInstances[guildId];
+        if (!rustplus) return { success: false, error: 'No rustplus instance' };
+
+        const instance = this.client.getInstance(guildId);
+        const channelId = instance.channelId.teamchat;
+        if (!channelId) return { success: false, error: 'No teamchat channel configured' };
+
+        const DiscordTools = require('../discordTools/discordTools');
+        const channel = DiscordTools.getTextChannelById(guildId, channelId);
+        if (!channel) return { success: false, error: 'Could not find teamchat channel' };
+
+        try {
+            const messages = await channel.messages.fetch({ limit: Math.min(limit, 100) });
+            let syncedCount = 0;
+            let skippedCount = 0;
+
+            for (const msg of messages.values()) {
+                // Only process bot's own messages with embeds
+                if (!msg.author.bot || msg.embeds.length === 0) continue;
+
+                const embed = msg.embeds[0];
+                const description = embed.description || '';
+                const footer = embed.footer?.text || '';
+
+                // Match "**PlayerName**: Message"
+                const match = description.match(/^\*\*([^*]+)\*\*: (.*)$/s);
+                if (match) {
+                    const playerName = match[1];
+                    const chatText = match[2];
+                    let steamId = footer;
+
+                    // If footer doesn't look like a SteamID (old message), try to find it by name
+                    if (!steamId || !steamId.match(/^\d{17}$/)) {
+                        steamId = this.db.findSteamIdByName(guildId, playerName) || 'unknown';
+                    }
+
+                    const timestamp = Math.floor(msg.createdAt.getTime() / 1000);
+                    const result = this.db.upsertChatMessage(guildId, rustplus.serverId, steamId, playerName, chatText, timestamp);
+
+                    if (result.changes > 0) {
+                        syncedCount++;
+                    } else {
+                        skippedCount++;
+                    }
+                }
+            }
+
+            this.client.log(this.client.intlGet(null, 'infoCap'), `Statistics: Discord sync completed for ${guildId}. Synced: ${syncedCount}, Skipped: ${skippedCount}`);
+            return { success: true, synced: syncedCount, skipped: skippedCount };
+        } catch (error) {
+            this.client.log(this.client.intlGet(null, 'errorCap'), `Statistics: Discord sync failed for ${guildId}: ${error.message}`, 'error');
+            return { success: false, error: error.message };
+        }
+    }
+
     getChatHistory(guildId, serverId, limit = 100) {
+        this.client.log(this.client.intlGet(null, 'infoCap'), `Statistics: fetching chat history for guild ${guildId} (server: ${serverId || 'all'})`);
         return this.db.getChatHistory(guildId, serverId, limit);
     }
 
@@ -321,19 +379,19 @@ class StatisticsTracker {
     }
 
     /* PIN CODE MANAGEMENT */
-    
+
     hasPinCode(guildId) {
         return this.db.hasPinCode(guildId);
     }
-    
+
     verifyPinCode(guildId, pin) {
         return this.db.verifyPinCode(guildId, pin);
     }
-    
+
     hasPinCode(guildId) {
         return this.db.hasPinCode(guildId);
     }
-    
+
     async verifyPinCode(guildId, pin) {
         const pinHash = this.db.getPinHash(guildId);
         if (!pinHash) {
@@ -341,14 +399,14 @@ class StatisticsTracker {
         }
         return await bcrypt.compare(pin, pinHash);
     }
-    
+
     async setPinCode(guildId, pin) {
         this.client.log(this.client.intlGet(null, 'infoCap'), `Statistics: setting PIN code for guild ${guildId}`);
         const saltRounds = 10;
         const pinHash = await bcrypt.hash(pin, saltRounds);
         return this.db.setPinCode(guildId, pinHash);
     }
-    
+
     removePinCode(guildId) {
         this.client.log(this.client.intlGet(null, 'infoCap'), `Statistics: removing PIN code for guild ${guildId}`);
         return this.db.removePinCode(guildId);
@@ -356,12 +414,12 @@ class StatisticsTracker {
 
     shutdown() {
         this.client.log(this.client.intlGet(null, 'infoCap'), 'Statistics: shutting down statistics tracker...');
-        
+
         // Stop all tracking
         Object.keys(this.trackingIntervals).forEach(guildId => {
             this.stopTracking(guildId);
         });
-        
+
         // Close database
         this.db.close();
         this.client.log(this.client.intlGet(null, 'infoCap'), 'Statistics: statistics tracker shut down');

@@ -23,6 +23,7 @@ const Discord = require('discord.js');
 const Battlemetrics = require('../structures/Battlemetrics');
 const Constants = require('../util/constants.js');
 const DiscordMessages = require('../discordTools/discordMessages.js');
+const DiscordTools = require('../discordTools/discordTools.js');
 const Keywords = require('../util/keywords.js');
 const Scrape = require('../util/scrape.js');
 
@@ -266,6 +267,7 @@ module.exports = async (client, interaction) => {
         const trackerName = interaction.fields.getTextInputValue('TrackerName');
         const trackerBattlemetricsId = interaction.fields.getTextInputValue('TrackerBattlemetricsId');
         const trackerClanTag = interaction.fields.getTextInputValue('TrackerClanTag');
+        const trackerChannelName = interaction.fields.getTextInputValue('TrackerChannelName');
 
         if (!tracker) {
             interaction.deferUpdate();
@@ -276,6 +278,18 @@ module.exports = async (client, interaction) => {
         if (trackerClanTag !== tracker.clanTag) {
             tracker.clanTag = trackerClanTag;
             client.battlemetricsIntervalCounter = 0;
+        }
+
+        // Cambiar el nombre del canal de Discord si se proporcionó uno
+        if (trackerChannelName && tracker.channelId) {
+            const channel = DiscordTools.getTextChannelById(guildId, tracker.channelId);
+            if (channel) {
+                try {
+                    await channel.setName(trackerChannelName);
+                } catch (e) {
+                    client.log(client.intlGet(null, 'errorCap'), `Could not rename tracker channel: ${e}`, 'error');
+                }
+            }
         }
 
         if (trackerBattlemetricsId !== tracker.battlemetricsId) {

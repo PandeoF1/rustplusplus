@@ -21,5 +21,32 @@
 const DiscordMessages = require('../discordTools/discordMessages.js');
 
 module.exports = async function (rustplus, client, message) {
+    // Send message to Discord
     await DiscordMessages.sendTeamChatMessage(rustplus.guildId, message);
+
+    // Track message in statistics database
+    if (client.statisticsTracker) {
+        try {
+            client.statisticsTracker.trackChatMessage(
+                rustplus.guildId,
+                rustplus.serverId,
+                message.steamId.toString(),
+                message.name,
+                message.message
+            );
+        } catch (error) {
+            rustplus.log('ERROR', `Failed to track chat message: ${error.message}`);
+        }
+    }
+
+    // Broadcast to WebUI in real-time
+    if (client.webServer) {
+        client.webServer.broadcastChatMessage(rustplus.guildId, {
+            server_id: rustplus.serverId,
+            steam_id: message.steamId.toString(),
+            player_name: message.name,
+            message: message.message,
+            timestamp: Math.floor(Date.now() / 1000)
+        });
+    }
 }

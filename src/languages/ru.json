@@ -80,6 +80,7 @@
     "cargoShipLeftSetting": "Уведомление когда Грузовой корабль покинет карту.",
     "cargoShipLocated": "Грузовой корабль расположен ({location}).",
     "cargoship": "Грузовой корабль",
+    "channelName": "Имя канала",
     "ceilingLight": "Потолочный светильник",
     "channelNameActivity": "активность",
     "channelNameAlarms": "сигналы тревоги",

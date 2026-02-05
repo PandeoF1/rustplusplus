@@ -292,6 +292,14 @@ module.exports = {
                 style: Discord.TextInputStyle.Short,
                 required: false,
                 minLength: 0
+            })),
+            new Discord.ActionRowBuilder().addComponents(TextInput.getTextInput({
+                customId: 'TrackerChannelName',
+                label: Client.client.intlGet(guildId, 'channelName'),
+                value: '', // Se deja vacío para que solo se cambie si se escribe algo, o podríamos intentar buscar el nombre actual
+                style: Discord.TextInputStyle.Short,
+                required: false,
+                placeholder: 'tracker-name'
             }))
         );
 

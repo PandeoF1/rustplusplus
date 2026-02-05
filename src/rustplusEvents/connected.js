@@ -109,6 +109,10 @@ module.exports = {
         rustplus.pollingTaskId = setInterval(PollingHandler.pollingHandler, client.pollingIntervalMs, rustplus, client);
         rustplus.isOperational = true;
 
+        if (client.webServer) {
+            client.webServer.broadcastGuildsUpdate();
+        }
+
         rustplus.updateLeaderRustPlusLiteInstance();
     },
 };

@@ -540,21 +540,40 @@ module.exports = async (client, interaction) => {
         /* Find an available tracker id */
         const trackerId = client.findAvailableTrackerId(guildId);
 
-        instance.trackers[trackerId] = {
-            name: 'Tracker',
-            serverId: ids.serverId,
-            battlemetricsId: server.battlemetricsId,
-            title: server.title,
-            img: server.img,
-            clanTag: '',
-            everyone: false,
-            inGame: true,
-            players: [],
-            messageId: null
-        }
-        client.setInstance(guildId, instance);
+        // Create a new channel for this tracker
+        const trackerChannelName = `tracker-${trackerId}`;
+        const newChannel = await DiscordTools.addTextChannel(guildId, trackerChannelName);
 
-        await DiscordMessages.sendTrackerMessage(guildId, trackerId);
+        if (newChannel) {
+            const category = DiscordTools.getCategoryById(guildId, instance.channelId.category);
+            if (category) {
+                try {
+                    await newChannel.setParent(category.id);
+                    await newChannel.lockPermissions();
+                } catch (e) {
+                    client.log(client.intlGet(null, 'errorCap'), `Could not set parent for tracker channel: ${e}`, 'error');
+                }
+            }
+
+            instance.trackers[trackerId] = {
+                name: 'Tracker',
+                serverId: ids.serverId,
+                battlemetricsId: server.battlemetricsId,
+                title: server.title,
+                img: server.img,
+                clanTag: '',
+                everyone: false,
+                inGame: true,
+                players: [],
+                messageId: null,
+                channelId: newChannel.id // Guardar el ID del canal
+            }
+            client.setInstance(guildId, instance);
+
+            await DiscordMessages.sendTrackerMessage(guildId, trackerId);
+        } else {
+            client.log(client.intlGet(null, 'errorCap'), 'Could not create channel for tracker', 'error');
+        }
     }
     else if (interaction.customId.startsWith('CreateGroup')) {
         const ids = JSON.parse(interaction.customId.replace('CreateGroup', ''));
@@ -1103,8 +1122,18 @@ module.exports = async (client, interaction) => {
             return;
         }
 
-        await DiscordTools.deleteMessageById(guildId, instance.channelId.trackers,
-            tracker.messageId);
+        // Eliminar el canal del tracker si existe
+        if (tracker.channelId) {
+            try {
+                await DiscordTools.removeTextChannel(guildId, tracker.channelId);
+            } catch (e) {
+                client.log(client.intlGet(null, 'errorCap'), `Could not delete tracker channel: ${e}`, 'error');
+            }
+        } else {
+            // Si no tiene canal propio, borrar solo el mensaje en el canal global
+            await DiscordTools.deleteMessageById(guildId, instance.channelId.trackers,
+                tracker.messageId);
+        }
 
         delete instance.trackers[ids.trackerId];
         client.setInstance(guildId, instance);

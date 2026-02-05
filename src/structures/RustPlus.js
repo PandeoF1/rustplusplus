@@ -289,6 +289,28 @@ class RustPlus extends RustPlusLib {
         if (!firstPoll && setting.voice) {
             await DiscordVoice.sendDiscordVoiceMessage(this.guildId, text);
         }
+
+        // Broadcast to WebUI
+        if (Client.client.webServer) {
+            // Try to find the setting key (e.g. "cargoShipDetectedSetting") to allow granular filtering in WebUI
+            const settingKey = Object.keys(this.notificationSettings).find(key => this.notificationSettings[key] === setting);
+
+            let type = settingKey || 'info';
+
+            // If we didn't find a key (e.g. custom setting), fallback to image-based type for icons/basic filtering
+            if (!settingKey) {
+                if (setting.image.includes('cargo')) type = 'cargo';
+                else if (setting.image.includes('heli')) type = 'heli';
+                else if (setting.image.includes('locked_crate')) type = 'crate';
+                else if (setting.image.includes('oil_rig')) type = 'oil_rig';
+                else if (setting.image.includes('vendor')) type = 'vendor';
+                else if (setting.image.includes('vending')) type = 'vending';
+                else if (setting.image.includes('chinook')) type = 'chinook';
+            }
+
+            Client.client.webServer.broadcastNotification(this.guildId, type, text);
+        }
+
         this.log(Client.client.intlGet(null, 'eventCap'), text);
     }
 
@@ -643,15 +665,19 @@ class RustPlus extends RustPlusLib {
             return false;
         }
         else if (response.hasOwnProperty('error')) {
+            if (response.error === 'not_found') return false;
+            
             this.log(Client.client.intlGet(null, 'errorCap'), Client.client.intlGet(null, 'responseContainError', {
                 error: response.error
             }), 'error');
             return false;
         }
         else if (Object.keys(response).length === 0) {
-            this.log(Client.client.intlGet(null, 'errorCap'),
-                Client.client.intlGet(null, 'responseIsEmpty'), 'error');
-            clearInterval(this.pollingTaskId);
+            /* 
+               Response is empty. 
+               We suppress the log as requested and do NOT stop the polling interval 
+               to allow the bot to recover from transient empty responses.
+            */
             return false;
         }
         return true;

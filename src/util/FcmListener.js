@@ -491,6 +491,10 @@ async function alarmRaidAlarm(client, guild, title, message, body) {
         rustplus.sendInGameMessage(`${title}: ${message}`);
     }
 
+    if (client.webServer) {
+        client.webServer.broadcastNotification(guild.id, 'raid', `${title}: ${message}`);
+    }
+
     client.log(client.intlGet(null, 'infoCap'), `${title} ${message}`);
 }
 
@@ -507,6 +511,10 @@ async function playerDeath(client, guild, title, message, body, discordUserId) {
 
     if (user) {
         await client.messageSend(user, content);
+    }
+
+    if (client.webServer) {
+        client.webServer.broadcastNotification(guild.id, 'death', `${title}: ${message}`);
     }
 }
 

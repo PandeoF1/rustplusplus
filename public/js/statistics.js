@@ -1,5 +1,3 @@
-// Statistics Manager for RustPlus WebUI
-
 class StatisticsManager {
     constructor(apiClient, guildId, serverId = null) {
         this.apiClient = apiClient;
@@ -9,11 +7,24 @@ class StatisticsManager {
         this.selectedPlayer = null;
         this.charts = {};
         this.authManager = null; // Will be set by app.js
+        this.chatHistory = []; // Local cache for current session
+        this.isChatLoaded = false;
+        this.isLoadingChat = false;
+        this.hasSyncedThisSession = false;
     }
 
     async init() {
         // Button is created in main app, we just need to load initial data
         await this.loadOverview();
+
+        // Listen for language changes to update the panel if it's open
+        window.addEventListener('languageChanged', () => {
+            const panel = document.getElementById('statisticsPanel');
+            if (panel && panel.style.display === 'flex') {
+                // Panel is open, reload current view to update translations
+                this.switchTab(this.currentView);
+            }
+        });
     }
 
     setupUI() {
@@ -28,57 +39,58 @@ class StatisticsManager {
     }
 
     async openStatisticsPanel() {
-        // Ensure we have serverId before opening
-        if (!this.serverId) {
-            console.error('[Statistics] Cannot open panel - serverId not available yet');
+        // We can open with just guildId, serverId is only for filtering
+        if (!this.guildId) {
+            console.error('[Statistics] Cannot open panel - guildId not available');
             return;
         }
-        
+
+        // Always remove and recreate the panel to ensure translations are current
         const existing = document.getElementById('statisticsPanel');
         if (existing) {
-            existing.style.display = 'flex';
-            return;
+            existing.remove();
         }
 
         const panel = document.createElement('div');
         panel.id = 'statisticsPanel';
         panel.className = 'statistics-panel';
-        
+
         // Check PIN status for button label
-        let pinButtonHtml = '<button id="pinCodeManageBtn" class="primary-button" onclick="window.rustplusUI.statisticsManager.openPinCodeManager()">🔒 Manage PIN</button>';
+        const t = (key) => window.rustplusUI?.languageManager?.get(key) || key;
+        let pinButtonHtml = `<button id="pinCodeManageBtn" class="primary-button" onclick="window.rustplusUI.statisticsManager.openPinCodeManager()">${t('stats.managePin')}</button>`;
         try {
             const pinStatus = await this.apiClient.get(`/api/statistics/pin-status/${this.guildId}`);
-            pinButtonHtml = pinStatus.hasPinCode 
-                ? '<button id="pinCodeManageBtn" class="primary-button" onclick="window.rustplusUI.statisticsManager.openPinCodeManager()">🔒 Change PIN</button>'
-                : '<button id="pinCodeManageBtn" class="primary-button" onclick="window.rustplusUI.statisticsManager.openPinCodeManager()">🔒 Set PIN</button>';
+            pinButtonHtml = pinStatus.hasPinCode
+                ? `<button id="pinCodeManageBtn" class="primary-button" onclick="window.rustplusUI.statisticsManager.openPinCodeManager()">${t('stats.changePin')}</button>`
+                : `<button id="pinCodeManageBtn" class="primary-button" onclick="window.rustplusUI.statisticsManager.openPinCodeManager()">${t('stats.setPin')}</button>`;
         } catch (e) {
             console.log('PIN status check failed, using default button');
         }
-        
+
         panel.innerHTML = `
             <div class="statistics-content">
                 <div class="statistics-header">
-                    <h2>📊 Server Statistics</h2>
+                    <h2>${t('stats.title')}</h2>
                     <div class="header-actions" id="statsHeaderActions" style="display: flex; align-items: center; gap: 10px;">
                         ${pinButtonHtml}
-                        <button class="primary-button" onclick="window.rustplusUI.statisticsManager.confirmResetStats()">🗑️ Reset Stats</button>
-                        <button class="close-button" onclick="document.getElementById('statisticsPanel').style.display='none'">✕</button>
+                        <button class="primary-button" onclick="window.rustplusUI.statisticsManager.confirmResetStats()">${t('stats.resetStats')}</button>
+                        <button class="close-button" onclick="document.getElementById('statisticsPanel').style.display='none'">${t('stats.close')}</button>
                     </div>
                 </div>
                 <div class="statistics-tabs">
-                    <button class="tab-button active" data-tab="overview">Overview</button>
-                    <button class="tab-button" data-tab="players">Players</button>
-                    <button class="tab-button" data-tab="sessions">Sessions</button>
-                    <button class="tab-button" data-tab="deaths">Deaths</button>
-                    <button class="tab-button" data-tab="chat">Chat History</button>
-                    <button class="tab-button" data-tab="replay">Map Replay</button>
+                    <button class="tab-button active" data-tab="overview">${t('stats.tab.overview')}</button>
+                    <button class="tab-button" data-tab="players">${t('stats.tab.players')}</button>
+                    <button class="tab-button" data-tab="sessions">${t('stats.tab.sessions')}</button>
+                    <button class="tab-button" data-tab="deaths">${t('stats.tab.deaths')}</button>
+                    <button class="tab-button" data-tab="chat">${t('stats.tab.chat')}</button>
+                    <button class="tab-button" data-tab="replay">${t('stats.tab.replay')}</button>
                 </div>
                 <div class="statistics-body" id="statisticsBody">
-                    <div class="loading">Loading statistics...</div>
+                    <div class="loading">${t('stats.loading')}</div>
                 </div>
             </div>
         `;
-        
+
         document.body.appendChild(panel);
         panel.style.display = 'flex';
 
@@ -95,9 +107,19 @@ class StatisticsManager {
     }
 
     async switchTab(tab) {
+        if (this.currentView === tab && document.getElementById('statisticsBody').innerHTML !== '' && !document.getElementById('statisticsBody').querySelector('.loading')) {
+            // Already on this tab and it has content, don't clear it
+            return;
+        }
+
         this.currentView = tab;
         const body = document.getElementById('statisticsBody');
-        body.innerHTML = '<div class="loading">Loading...</div>';
+        const t = (key) => window.rustplusUI?.languageManager?.get(key) || key;
+
+        // Show loading but keep existing content if possible (except for first load)
+        if (body.innerHTML === '' || body.querySelector('.loading')) {
+            body.innerHTML = `<div class="loading">${t('stats.loading')}</div>`;
+        }
 
         switch (tab) {
             case 'overview':
@@ -120,14 +142,14 @@ class StatisticsManager {
                 break;
         }
     }
-    
+
     async openPinCodeManager() {
         // Check current PIN status from auth manager or API
         let hasPinCode = false;
         if (this.authManager) {
             hasPinCode = this.authManager.hasPinCode;
         }
-        
+
         // If not set in auth manager, check from API
         if (hasPinCode === null || hasPinCode === undefined) {
             try {
@@ -141,7 +163,7 @@ class StatisticsManager {
                 hasPinCode = false;
             }
         }
-        
+
         if (!hasPinCode) {
             // No pin code set, show setup form
             this.showPinSetupForm();
@@ -150,7 +172,7 @@ class StatisticsManager {
             this.showPinManagementForm();
         }
     }
-    
+
     showPinSetupForm() {
         const body = document.getElementById('statisticsBody');
         body.innerHTML = `
@@ -177,7 +199,7 @@ class StatisticsManager {
             </div>
         `;
     }
-    
+
     showPinManagementForm() {
         const body = document.getElementById('statisticsBody');
         body.innerHTML = `
@@ -212,25 +234,25 @@ class StatisticsManager {
             </div>
         `;
     }
-    
+
     async saveNewPin() {
         const newPin = document.getElementById('newPin')?.value || '';
         const confirmPin = document.getElementById('confirmPin')?.value || '';
         const errorDiv = document.getElementById('pinSetupError');
-        
+
         if (!newPin || newPin.length < 4) {
             errorDiv.textContent = 'PIN must be at least 4 characters';
             return;
         }
-        
+
         if (newPin !== confirmPin) {
             errorDiv.textContent = 'PIN codes do not match';
             return;
         }
-        
+
         try {
             const result = await this.apiClient.post(`/api/statistics/set-pin/${this.guildId}`, { pin: newPin });
-            
+
             if (result.success) {
                 // Update auth manager
                 if (this.authManager) {
@@ -253,34 +275,34 @@ class StatisticsManager {
             }
         }
     }
-    
+
     async updatePin() {
         const currentPin = document.getElementById('currentPin')?.value || '';
         const newPin = document.getElementById('newPin')?.value || '';
         const confirmPin = document.getElementById('confirmPin')?.value || '';
         const errorDiv = document.getElementById('pinManageError');
-        
+
         if (!currentPin) {
             errorDiv.textContent = 'Please enter current PIN';
             return;
         }
-        
+
         if (newPin && newPin.length < 4) {
             errorDiv.textContent = 'New PIN must be at least 4 characters';
             return;
         }
-        
+
         if (newPin !== confirmPin) {
             errorDiv.textContent = 'New PIN codes do not match';
             return;
         }
-        
+
         try {
-            const result = await this.apiClient.post(`/api/statistics/update-pin/${this.guildId}`, { 
-                currentPin, 
-                newPin: newPin || null 
+            const result = await this.apiClient.post(`/api/statistics/update-pin/${this.guildId}`, {
+                currentPin,
+                newPin: newPin || null
             });
-            
+
             if (result.success) {
                 if (!newPin) {
                     // PIN was removed
@@ -303,26 +325,26 @@ class StatisticsManager {
             errorDiv.textContent = 'Error updating PIN code';
         }
     }
-    
+
     async removePin() {
         const currentPin = document.getElementById('currentPin')?.value || '';
         const errorDiv = document.getElementById('pinManageError');
-        
+
         if (!currentPin) {
             errorDiv.textContent = 'Please enter current PIN to remove it';
             return;
         }
-        
+
         if (!confirm('⚠️ Are you sure you want to remove PIN protection?\n\nAnyone will be able to view statistics and reset data without authentication.')) {
             return;
         }
-        
+
         try {
-            const result = await this.apiClient.post(`/api/statistics/update-pin/${this.guildId}`, { 
-                currentPin, 
-                newPin: null 
+            const result = await this.apiClient.post(`/api/statistics/update-pin/${this.guildId}`, {
+                currentPin,
+                newPin: null
             });
-            
+
             if (result.success) {
                 if (this.authManager) {
                     this.authManager.hasPinCode = false;
@@ -370,10 +392,11 @@ class StatisticsManager {
 
     async loadOverview() {
         try {
+            const t = (key) => window.rustplusUI?.languageManager?.get(key) || key;
             const teamData = window.rustplusUI?.serverData?.team;
             if (!teamData || !teamData.players || teamData.players.length === 0) {
                 document.getElementById('statisticsBody').innerHTML = `
-                    <div class="info">No team data available. Connect to a server with team members to see statistics.</div>
+                    <div class="info">${t('stats.noTeamData')}</div>
                 `;
                 return;
             }
@@ -392,45 +415,26 @@ class StatisticsManager {
                         <div class="stat-card">
                             <div class="stat-icon">👥</div>
                             <div class="stat-value">${teamStats.playerCount || 0}</div>
-                            <div class="stat-label">Team Members</div>
+                            <div class="stat-label">${t('stats.teamMembers')}</div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-icon">🎮</div>
                             <div class="stat-value">${teamStats.totalSessions || 0}</div>
-                            <div class="stat-label">Total Sessions</div>
+                            <div class="stat-label">${t('stats.totalSessions')}</div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-icon">⏱️</div>
                             <div class="stat-value">${teamStats.totalPlaytimeHours || 0}h</div>
-                            <div class="stat-label">Total Playtime</div>
+                            <div class="stat-label">${t('stats.totalPlaytime')}</div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-icon">📈</div>
                             <div class="stat-value">${Math.floor(teamStats.avgSessionSeconds / 60) || 0}m</div>
-                            <div class="stat-label">Avg Session</div>
+                            <div class="stat-label">${t('stats.avgSession')}</div>
                         </div>
                     </div>
-                    
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin: 30px 0 15px 0;">
-                        <h3 style="margin: 0;">📈 Population Timeline</h3>
-                        <div class="time-range-selector">
-                            <label style="margin-right: 8px;">Time Range:</label>
-                            <select id="populationTimeRange" onchange="window.rustplusUI.statisticsManager.updatePopulationTimeline()">
-                                <option value="24">Last 24 Hours</option>
-                                <option value="72">Last 3 Days</option>
-                                <option value="168" selected>Last 7 Days</option>
-                                <option value="336">Last 14 Days</option>
-                                <option value="720">Last 30 Days</option>
-                                <option value="2160">Last 90 Days</option>
-                                <option value="4320">Last 180 Days</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="connectionChart"></canvas>
-                    </div>
-                    
-                    <h3>👥 Team Members Overview</h3>
+
+                    <h3>${t('stats.teamMembersOverview')}</h3>
                     <div class="team-stats-grid">
                         ${teamStats.playerStats.map(stat => `
                             <div class="team-member-card">
@@ -444,6 +448,25 @@ class StatisticsManager {
                         `).join('')}
                     </div>
                     
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin: 30px 0 15px 0;">
+                        <h3 style="margin: 0;">${t('stats.populationTimeline')}</h3>
+                        <div class="time-range-selector">
+                            <label style="margin-right: 8px;">${t('stats.timeRange')}</label>
+                            <select id="populationTimeRange" onchange="window.rustplusUI.statisticsManager.updatePopulationTimeline()">
+                                <option value="24">${t('stats.last24h')}</option>
+                                <option value="72">${t('stats.last3days')}</option>
+                                <option value="168" selected>${t('stats.last7days')}</option>
+                                <option value="336">${t('stats.last14days')}</option>
+                                <option value="720">${t('stats.last30days')}</option>
+                                <option value="2160">${t('stats.last90days')}</option>
+                                <option value="4320">${t('stats.last180days')}</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="connectionChart"></canvas>
+                    </div>
+                    
                     <div id="dbInfo" class="db-info" style="margin-top: 20px;"></div>
                 </div>
             `;
@@ -452,8 +475,9 @@ class StatisticsManager {
             this.loadDatabaseInfo();
         } catch (error) {
             console.error('Error loading overview:', error);
+            const t = (key) => window.rustplusUI?.languageManager?.get(key) || key;
             document.getElementById('statisticsBody').innerHTML = `
-                <div class="error">Failed to load statistics: ${error.message}</div>
+                <div class="error">${t('stats.failedToLoad')} ${error.message}</div>
             `;
         }
     }
@@ -467,7 +491,7 @@ class StatisticsManager {
             console.error('Error updating population timeline:', error);
         }
     }
-    
+
     getPlayerName(steamId) {
         const teamData = window.rustplusUI?.serverData?.team;
         if (!teamData) return 'Unknown';
@@ -477,10 +501,11 @@ class StatisticsManager {
 
     async loadPlayers() {
         try {
+            const t = (key) => window.rustplusUI?.languageManager?.get(key) || key;
             const teamData = window.rustplusUI?.serverData?.team;
             if (!teamData || !teamData.players) {
                 document.getElementById('statisticsBody').innerHTML = `
-                    <div class="info">No team data available</div>
+                    <div class="info">${t('stats.noTeamData')}</div>
                 `;
                 return;
             }
@@ -493,12 +518,12 @@ class StatisticsManager {
             const body = document.getElementById('statisticsBody');
             body.innerHTML = `
                 <div class="players-stats">
-                    <h3>Team Players</h3>
+                    <h3>${t('stats.teamPlayers')}</h3>
                     <div class="players-list">
                         ${playerStats.map((data, idx) => {
-                            const player = teamData.players[idx];
-                            const stats = data.stats;
-                            return `
+                const player = teamData.players[idx];
+                const stats = data.stats;
+                return `
                                 <div class="player-stat-card" style="border-left: 4px solid ${data.color};">
                                     <div class="player-stat-header">
                                         <img src="/api/avatar/${player.steamId}" alt="${player.name}" class="player-avatar-small">
@@ -509,39 +534,40 @@ class StatisticsManager {
                                     </div>
                                     <div class="player-stat-details">
                                         <div class="stat-row">
-                                            <span>Total Playtime:</span>
+                                            <span>${t('stats.totalPlaytimeLabel')}</span>
                                             <strong>${stats.totalPlaytimeHours}h ${Math.floor((stats.totalPlaytimeSeconds % 3600) / 60)}m</strong>
                                         </div>
                                         <div class="stat-row">
-                                            <span>Sessions:</span>
+                                            <span>${t('stats.sessionsLabel')}</span>
                                             <strong>${stats.totalSessions}</strong>
                                         </div>
                                         <div class="stat-row">
-                                            <span>Avg Session:</span>
+                                            <span>${t('stats.avgSessionLabel')}</span>
                                             <strong>${Math.floor(stats.avgSessionSeconds / 60)}m</strong>
                                         </div>
                                         <div class="stat-row">
-                                            <span>Longest Session:</span>
+                                            <span>${t('stats.longestSessionLabel')}</span>
                                             <strong>${Math.floor(stats.longestSessionSeconds / 3600)}h ${Math.floor((stats.longestSessionSeconds % 3600) / 60)}m</strong>
                                         </div>
                                         <div class="stat-row">
-                                            <span>Deaths:</span>
+                                            <span>${t('stats.deathsLabel')}</span>
                                             <strong>${stats.totalDeaths} (${stats.deathsPerHour.toFixed(2)}/hr)</strong>
                                         </div>
                                     </div>
                                     <button class="view-details-btn" onclick="window.rustplusUI.statisticsManager.viewPlayerDetails('${player.steamId}', '${player.name}')">
-                                        View Details
+                                        ${t('stats.viewDetails')}
                                     </button>
                                 </div>
                             `;
-                        }).join('')}
+            }).join('')}
                     </div>
                 </div>
             `;
         } catch (error) {
             console.error('Error loading players:', error);
+            const t = (key) => window.rustplusUI?.languageManager?.get(key) || key;
             document.getElementById('statisticsBody').innerHTML = `
-                <div class="error">Failed to load player statistics: ${error.message}</div>
+                <div class="error">${t('stats.failedToLoad')} ${error.message}</div>
             `;
         }
     }
@@ -549,7 +575,7 @@ class StatisticsManager {
     async viewPlayerDetails(steamId, playerName) {
         try {
             const data = await this.apiClient.get(`/api/statistics/player/${this.guildId}/${steamId}?serverId=${this.serverId}`);
-            
+
             // Helper function to get session duration (including active sessions)
             const now = Math.floor(Date.now() / 1000);
             const getSessionDuration = (session) => {
@@ -560,7 +586,7 @@ class StatisticsManager {
                 const endTime = session.session_end || now;
                 return Math.max(0, endTime - session.session_start);
             };
-            
+
             // Calculate enhanced statistics (including active sessions)
             const totalPlaytime = data.sessions.reduce((sum, s) => sum + getSessionDuration(s), 0);
             const avgSessionLength = data.sessions.length > 0 ? totalPlaytime / data.sessions.length : 0;
@@ -568,7 +594,7 @@ class StatisticsManager {
             const activeSessions = data.sessions.filter(s => s.is_active).length;
             const deathCount = data.deaths.length;
             const deathsPerHour = totalPlaytime > 0 ? (deathCount / (totalPlaytime / 3600)).toFixed(2) : 0;
-            
+
             // Calculate play patterns (hours of day) - including active sessions
             const playByHour = new Array(24).fill(0);
             const playByDayOfWeek = new Array(7).fill(0);
@@ -578,11 +604,11 @@ class StatisticsManager {
                 playByHour[start.getHours()] += duration / 3600;
                 playByDayOfWeek[start.getDay()] += duration / 3600;
             });
-            
+
             const favoriteHour = playByHour.indexOf(Math.max(...playByHour));
             const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
             const favoriteDay = dayNames[playByDayOfWeek.indexOf(Math.max(...playByDayOfWeek))];
-            
+
             const body = document.getElementById('statisticsBody');
             body.innerHTML = `
                 <div class="player-details">
@@ -656,11 +682,11 @@ class StatisticsManager {
                     <h3>Recent Sessions (${data.sessions.length} total)</h3>
                     <div class="sessions-list">
                         ${data.sessions.slice(0, 15).map(session => {
-                            const duration = getSessionDuration(session);
-                            const hours = Math.floor(duration / 3600);
-                            const minutes = Math.floor((duration % 3600) / 60);
-                            const durationStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes} min`;
-                            return `
+                const duration = getSessionDuration(session);
+                const hours = Math.floor(duration / 3600);
+                const minutes = Math.floor((duration % 3600) / 60);
+                const durationStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes} min`;
+                return `
                             <div class="session-item ${session.is_active ? 'active' : ''}">
                                 <div class="session-time">
                                     ${new Date(session.session_start * 1000).toLocaleString()}
@@ -686,7 +712,7 @@ class StatisticsManager {
                     </div>
                 </div>
             `;
-            
+
             // Render charts with proper sizing
             requestAnimationFrame(() => {
                 this.renderPlayerSessionChart(data.sessions, data.color);
@@ -731,7 +757,7 @@ class StatisticsManager {
                 <canvas id="allSessionsChart"></canvas>
             </div>
         `;
-        
+
         await this.updateSessionTimeline();
     }
 
@@ -758,27 +784,27 @@ class StatisticsManager {
                 </div>
             </div>
         `;
-        
+
         await this.updateDeathsView();
     }
-    
+
     async updateDeathsView() {
         try {
             const timeRange = document.getElementById('deathTimeRangeSelect')?.value || '168';
             const now = Math.floor(Date.now() / 1000);
             const startTime = timeRange === 'all' ? 0 : now - (parseInt(timeRange) * 3600);
-            
+
             const url = `/api/statistics/deaths/${this.guildId}?startTime=${startTime}&endTime=${now}&limit=10000&serverId=${this.serverId || ''}`;
             console.log('[Deaths] Fetching from URL:', url);
-            
+
             const deathsResponse = await this.apiClient.get(url);
             console.log('[Deaths] Received deaths:', deathsResponse);
-            
+
             const content = document.getElementById('deathsContent');
-            
+
             // Handle both array and object formats
             let deathsArray = Array.isArray(deathsResponse) ? deathsResponse : Object.values(deathsResponse).flat();
-            
+
             // Group deaths by steam_id
             const deaths = {};
             deathsArray.forEach(death => {
@@ -788,13 +814,13 @@ class StatisticsManager {
                 }
                 deaths[steamId].push(death);
             });
-            
+
             // Calculate statistics
             const totalDeaths = deathsArray.length;
             const playerDeathCounts = {};
             const deathsByHour = new Array(24).fill(0);
             const recentDeaths = [];
-            
+
             Object.entries(deaths).forEach(([steamId, playerDeaths]) => {
                 playerDeathCounts[steamId] = playerDeaths.length;
                 playerDeaths.forEach(death => {
@@ -803,14 +829,14 @@ class StatisticsManager {
                     recentDeaths.push({ ...death, steamId });
                 });
             });
-            
+
             // Sort recent deaths by time
             recentDeaths.sort((a, b) => b.death_time - a.death_time);
-            
+
             // Find most dangerous hour
             const maxDeathHour = deathsByHour.indexOf(Math.max(...deathsByHour));
             const avgDeathsPerDay = totalDeaths / (timeRange === 'all' ? 30 : parseInt(timeRange) / 24);
-            
+
             // Get player names
             const teamData = window.rustplusUI?.serverData?.team;
             const getPlayerName = (steamId) => {
@@ -818,12 +844,12 @@ class StatisticsManager {
                 const player = teamData.players.find(p => p.steamId === steamId);
                 return player ? player.name : 'Unknown';
             };
-            
+
             // Top death leaders
             const topDeaths = Object.entries(playerDeathCounts)
                 .sort((a, b) => b[1] - a[1])
                 .slice(0, 5);
-            
+
             content.innerHTML = `
                 <div class="stats-grid">
                     <div class="stat-card">
@@ -896,58 +922,58 @@ class StatisticsManager {
                     </button>
                 </div>
             `;
-            
+
             // Render deaths by hour chart
             this.renderDeathsByHourChart(deathsByHour);
-            
+
         } catch (error) {
             console.error('Error loading deaths:', error);
             const content = document.getElementById('deathsContent');
             content.innerHTML = '<p style="color: #888; text-align: center; padding: 20px;">Error loading death statistics</p>';
         }
     }
-    
+
     renderDeathsByHourChart(deathsByHour) {
         const canvas = document.getElementById('deathsByHourChart');
         if (!canvas) return;
-        
+
         const ctx = canvas.getContext('2d');
         canvas.width = canvas.offsetWidth || canvas.parentElement?.clientWidth || 800;
         canvas.height = 250;
-        
+
         const data = deathsByHour.map((count, hour) => ({
             x: hour,
             y: count,
             label: `${hour}:00`
         }));
-        
+
         const padding = { left: 50, right: 20, top: 30, bottom: 40 };
         const chartWidth = canvas.width - padding.left - padding.right;
         const chartHeight = canvas.height - padding.top - padding.bottom;
         const maxY = Math.max(...deathsByHour, 1) * 1.1;
         const barWidth = chartWidth / 24 * 0.7;
-        
+
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
+
         // Draw title
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 14px Arial';
         ctx.textAlign = 'center';
         ctx.fillText('Deaths Distribution by Hour', canvas.width / 2, 20);
-        
+
         // Draw bars
         data.forEach((point, i) => {
             const x = padding.left + (chartWidth / 24) * i + (chartWidth / 24 - barWidth) / 2;
             const barHeight = (point.y / maxY) * chartHeight;
             const y = padding.top + chartHeight - barHeight;
-            
+
             // Gradient fill
             const gradient = ctx.createLinearGradient(x, y, x, y + barHeight);
             gradient.addColorStop(0, '#ff5722');
             gradient.addColorStop(1, '#ff5722aa');
             ctx.fillStyle = gradient;
             ctx.fillRect(x, y, barWidth, barHeight);
-            
+
             // Hour label (every 3 hours)
             if (i % 3 === 0) {
                 ctx.fillStyle = '#888';
@@ -956,7 +982,7 @@ class StatisticsManager {
                 ctx.fillText(i.toString(), x + barWidth / 2, canvas.height - 5);
             }
         });
-        
+
         // Draw axes
         ctx.strokeStyle = '#444';
         ctx.lineWidth = 2;
@@ -965,7 +991,7 @@ class StatisticsManager {
         ctx.lineTo(padding.left, padding.top + chartHeight);
         ctx.lineTo(padding.left + chartWidth, padding.top + chartHeight);
         ctx.stroke();
-        
+
         // Y-axis labels
         ctx.fillStyle = '#888';
         ctx.font = '11px Arial';
@@ -975,51 +1001,197 @@ class StatisticsManager {
             const value = Math.floor((maxY / 5) * i);
             ctx.fillText(value.toString(), padding.left - 5, y + 4);
         }
-        
+
         // Axis labels
         ctx.fillStyle = '#aaa';
         ctx.font = '12px Arial';
         ctx.textAlign = 'center';
         ctx.fillText('Hour of Day', canvas.width / 2, canvas.height - 5);
-        
+
         ctx.save();
         ctx.translate(15, canvas.height / 2);
         ctx.rotate(-Math.PI / 2);
         ctx.fillText('Number of Deaths', 0, 0);
-        ctx.restore();
     }
 
     async loadChatHistory() {
         try {
-            const chatHistory = await this.apiClient.get(`/api/statistics/chat/${this.guildId}?limit=200`);
-            
+            const t = (key) => window.rustplusUI?.languageManager?.get(key) || key;
             const body = document.getElementById('statisticsBody');
+
+            // If already loading, don't repeat
+            if (this.isLoadingChat) return;
+
+            // If we already have chat history in cache, render it immediately
+            if (this.chatHistory.length > 0) {
+                this.renderChatHistory();
+            }
+
+            // If we haven't loaded from API yet, do it now
+            if (!this.isChatLoaded) {
+                this.isLoadingChat = true;
+
+                const encodedServerId = this.serverId ? encodeURIComponent(this.serverId) : '';
+                const url = `/api/statistics/chat/${this.guildId}?limit=500&serverId=${encodedServerId}`;
+                console.log(`[Statistics] Initial loading of chat history from: ${url}`);
+
+                const chatResponse = await this.apiClient.get(url);
+                console.log(`[Statistics] Chat history response count: ${chatResponse?.length || 0}`);
+
+                if (chatResponse && chatResponse.length > 0) {
+                    // Update cache with historical messages, avoid duplicates
+                    const existingIds = new Set(this.chatHistory.map(m => `${m.steam_id}-${m.timestamp}-${m.message.substring(0, 20)}`));
+
+                    chatResponse.forEach(msg => {
+                        const id = `${msg.steam_id}-${msg.timestamp}-${msg.message.substring(0, 20)}`;
+                        if (!existingIds.has(id)) {
+                            this.chatHistory.push(msg);
+                        }
+                    });
+
+                    // Sort cache by timestamp
+                    this.chatHistory.sort((a, b) => a.timestamp - b.timestamp);
+
+                    // Keep reasonable limit
+                    if (this.chatHistory.length > 1000) {
+                        this.chatHistory = this.chatHistory.slice(-1000);
+                    }
+                }
+
+                this.isChatLoaded = true;
+                this.isLoadingChat = false;
+
+                // Auto-sync from Discord if empty and not yet synced this session
+                if (this.chatHistory.length === 0 && !this.hasSyncedThisSession) {
+                    console.log('[Statistics] Chat history empty, triggering auto-sync from Discord...');
+                    this.hasSyncedThisSession = true;
+                    await this.syncFromDiscord(true); // true = silent
+                } else {
+                    this.renderChatHistory();
+                }
+            }
+
+        } catch (error) {
+            this.isLoadingChat = false;
+            console.error('Error loading chat history:', error);
+            const t = (key) => window.rustplusUI?.languageManager?.get(key) || key;
+            const body = document.getElementById('statisticsBody');
+            if (body && (!this.chatHistory || this.chatHistory.length === 0)) {
+                body.innerHTML = `
+                    <div class="error">${t('stats.failedToLoad')} ${error.message}</div>
+                `;
+            }
+        }
+    }
+
+    renderChatHistory() {
+        const body = document.getElementById('statisticsBody');
+        const t = (key) => window.rustplusUI?.languageManager?.get(key) || key;
+
+        if (!body || this.currentView !== 'chat') return;
+
+        if (this.chatHistory.length === 0) {
             body.innerHTML = `
                 <div class="chat-history">
-                    <h3>Chat History</h3>
-                    <div class="chat-messages">
-                        ${chatHistory.map(msg => `
-                            <div class="chat-message">
-                                <div class="chat-header">
-                                    <img src="/api/avatar/${msg.steam_id}" alt="${msg.player_name}" class="chat-avatar">
-                                    <strong>${msg.player_name}</strong>
-                                    <span class="chat-time">${new Date(msg.timestamp * 1000).toLocaleString()}</span>
-                                </div>
-                                <div class="chat-text">${this.escapeHtml(msg.message)}</div>
-                            </div>
-                        `).join('')}
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3 style="margin: 0;">${t('stats.tab.chat')}</h3>
                     </div>
+                    <div id="emptyChatInfo" class="info">No chat messages found.</div>
+                    <div class="chat-messages" style="display: none;"></div>
                 </div>
             `;
-        } catch (error) {
-            console.error('Error loading chat history:', error);
+            return;
         }
+
+        body.innerHTML = `
+            <div class="chat-history">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin: 0;">${t('stats.tab.chat')}</h3>
+                </div>
+                <div class="chat-messages">
+                    ${this.chatHistory.map(msg => `
+                        <div class="chat-message">
+                            <div class="chat-header">
+                                <img src="/api/avatar/${msg.steam_id}" alt="${msg.player_name}" class="chat-avatar">
+                                <strong>${this.escapeHtml(msg.player_name)}</strong>
+                                <span class="chat-time">${new Date(msg.timestamp * 1000).toLocaleString()}</span>
+                            </div>
+                            <div class="chat-text">${this.escapeHtml(msg.message)}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+
+        // Auto-scroll to bottom
+        const container = body.querySelector('.chat-messages');
+        if (container) container.scrollTop = container.scrollHeight;
+    }
+
+    async refreshChatHistory() {
+        this.isChatLoaded = false;
+        await this.loadChatHistory();
+    }
+
+    async syncFromDiscord(silent = false) {
+        const btn = document.getElementById('syncDiscordBtn');
+        const originalText = btn ? btn.innerHTML : '';
+
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '⌛ Syncing...';
+        }
+
+        try {
+            console.log('[Statistics] Requesting Discord chat sync...');
+            const result = await this.apiClient.post(`/api/statistics/sync-chat/${this.guildId}?limit=100`, {});
+
+            if (result.success) {
+                if (!silent) alert(`✅ Successfully synced ${result.synced} messages from Discord! (${result.skipped} duplicates skipped)`);
+                // Force reload
+                this.isChatLoaded = false;
+                await this.loadChatHistory();
+            } else {
+                if (!silent) alert(`❌ Sync failed: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('Error syncing from Discord:', error);
+            if (!silent) alert(`❌ Error syncing: ${error.message}`);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+    }
+
+    handleNewChatMessage(msg) {
+        // ALWAYS store in cache even if tab is not active
+        const exists = this.chatHistory.some(m =>
+            m.steam_id === msg.steam_id &&
+            Math.abs(m.timestamp - msg.timestamp) < 2 &&
+            m.message === msg.message
+        );
+
+        if (!exists) {
+            this.chatHistory.push(msg);
+
+            // Limit cache size
+            if (this.chatHistory.length > 1000) {
+                this.chatHistory.shift();
+            }
+        }
+
+        // Only update UI if we are currently looking at the chat tab
+        if (this.currentView !== 'chat') return;
+
+        this.renderChatHistory();
     }
 
     async loadReplay() {
         const body = document.getElementById('statisticsBody');
         body.innerHTML = `
-            <div class="replay-container">
+    < div class="replay-container" >
                 <h3>Map Replay</h3>
                 <p class="info-text">View historical player movements on the main map with a timeline scrubber.</p>
                 
@@ -1055,9 +1227,9 @@ class StatisticsManager {
                         <li>Click "Exit Replay" on the map to return to live view</li>
                     </ul>
                 </div>
-            </div>
-        `;
-        
+            </div >
+    `;
+
         document.getElementById('startReplayBtn').onclick = () => this.startMapReplay();
     }
 
@@ -1065,38 +1237,38 @@ class StatisticsManager {
         const minutes = parseInt(document.getElementById('replayTimeRange').value);
         const status = document.getElementById('replayStatus');
         const btn = document.getElementById('startReplayBtn');
-        
+
         btn.disabled = true;
         status.innerHTML = '<div class="loading">Loading replay data...</div>';
-        
+
         try {
-            const replayData = await this.apiClient.get(`/api/statistics/replay/${this.guildId}?minutes=${minutes}&serverId=${this.serverId}`);
-            
+            const replayData = await this.apiClient.get(`/ api / statistics / replay / ${this.guildId}?minutes = ${minutes}& serverId=${this.serverId} `);
+
             const playerCount = Object.keys(replayData).length;
             const totalPositions = Object.values(replayData).reduce((sum, p) => sum + p.positions.length, 0);
-            
+
             if (playerCount === 0 || totalPositions === 0) {
                 status.innerHTML = '<div class="error">No replay data available for this time range.</div>';
                 btn.disabled = false;
                 return;
             }
-            
-            status.innerHTML = `<div class="success">✓ Loaded ${totalPositions.toLocaleString()} positions for ${playerCount} players</div>`;
-            
+
+            status.innerHTML = `< div class="success" >✓ Loaded ${totalPositions.toLocaleString()} positions for ${playerCount} players</div > `;
+
             // Start replay on main map
             if (window.rustplusUI) {
                 window.rustplusUI.setReplayMode(true, replayData);
-                
+
                 // Close statistics panel so user can see the map
                 setTimeout(() => {
                     const panel = document.getElementById('statisticsPanel');
                     if (panel) panel.style.display = 'none';
                 }, 1000);
             }
-            
+
             btn.disabled = false;
         } catch (error) {
-            status.innerHTML = `<div class="error">Error loading replay: ${error.message}</div>`;
+            status.innerHTML = `< div class="error" > Error loading replay: ${error.message}</div > `;
             btn.disabled = false;
             console.error('Error loading replay:', error);
         }
@@ -1108,10 +1280,11 @@ class StatisticsManager {
             const dbInfo = document.getElementById('dbInfo');
             if (dbInfo) {
                 dbInfo.innerHTML = `
-                    Database: ${info.size.megabytes} MB | 
-                    Last maintenance: ${info.maintenanceLog.length > 0 ? 
-                        new Date(info.maintenanceLog[0].timestamp * 1000).toLocaleString() : 'Never'}
-                `;
+Database: ${info.size.megabytes} MB |
+    Last maintenance: ${info.maintenanceLog.length > 0 ?
+                        new Date(info.maintenanceLog[0].timestamp * 1000).toLocaleString() : 'Never'
+                    }
+`;
             }
         } catch (error) {
             console.error('Error loading database info:', error);
@@ -1121,14 +1294,14 @@ class StatisticsManager {
     renderPopulationTimeline(data) {
         const canvas = document.getElementById('connectionChart');
         if (!canvas) return;
-        
+
         // Set canvas size
         canvas.width = canvas.offsetWidth;
         canvas.height = 300;
-        
+
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
+
         if (!data || data.length === 0) {
             ctx.fillStyle = '#888';
             ctx.font = '14px Arial';
@@ -1136,20 +1309,20 @@ class StatisticsManager {
             ctx.fillText('No data available', canvas.width / 2, canvas.height / 2);
             return;
         }
-        
+
         const padding = { top: 40, right: 40, bottom: 60, left: 60 };
         const chartWidth = canvas.width - padding.left - padding.right;
         const chartHeight = canvas.height - padding.top - padding.bottom;
-        
+
         // Find max values
         const maxPlayers = Math.max(...data.map(d => d.online_players), 10);
         const maxQueue = Math.max(...data.map(d => d.queued_players || 0), 0);
         const maxValue = Math.max(maxPlayers, maxQueue) * 1.1;
-        
+
         // Draw background
         ctx.fillStyle = '#1a1a1a';
         ctx.fillRect(padding.left, padding.top, chartWidth, chartHeight);
-        
+
         // Draw grid lines
         ctx.strokeStyle = '#333';
         ctx.lineWidth = 1;
@@ -1160,7 +1333,7 @@ class StatisticsManager {
             ctx.moveTo(padding.left, y);
             ctx.lineTo(padding.left + chartWidth, y);
             ctx.stroke();
-            
+
             // Y-axis labels
             const value = Math.floor(maxValue * (1 - i / gridLines));
             ctx.fillStyle = '#888';
@@ -1168,7 +1341,7 @@ class StatisticsManager {
             ctx.textAlign = 'right';
             ctx.fillText(value.toString(), padding.left - 10, y + 4);
         }
-        
+
         // Draw time labels (sample every N points for readability)
         const timeLabels = 6;
         const step = Math.floor(data.length / timeLabels);
@@ -1180,14 +1353,14 @@ class StatisticsManager {
             const timeStr = `${date.getMonth() + 1}/${date.getDate()} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
             ctx.fillText(timeStr, x, canvas.height - padding.bottom + 20);
         }
-        
+
         // Function to draw line chart
         const drawLine = (dataKey, color, fillAlpha = 0.2) => {
             const points = data.map((point, i) => ({
                 x: padding.left + (chartWidth / (data.length - 1)) * i,
                 y: padding.top + chartHeight - ((point[dataKey] || 0) / maxValue) * chartHeight
             }));
-            
+
             // Draw filled area
             ctx.fillStyle = color + Math.floor(fillAlpha * 255).toString(16).padStart(2, '0');
             ctx.beginPath();
@@ -1196,7 +1369,7 @@ class StatisticsManager {
             ctx.lineTo(points[points.length - 1].x, chartHeight + padding.top);
             ctx.closePath();
             ctx.fill();
-            
+
             // Draw line
             ctx.strokeStyle = color;
             ctx.lineWidth = 2;
@@ -1207,31 +1380,31 @@ class StatisticsManager {
             });
             ctx.stroke();
         };
-        
+
         // Draw queue first (background layer)
         if (maxQueue > 0) {
             drawLine('queued_players', '#ff9800', 0.15);
         }
-        
+
         // Draw online players (foreground layer)
         drawLine('online_players', '#4caf50', 0.25);
-        
+
         // Draw border
         ctx.strokeStyle = '#555';
         ctx.lineWidth = 2;
         ctx.strokeRect(padding.left, padding.top, chartWidth, chartHeight);
-        
+
         // Draw legend
         const legendY = padding.top - 20;
         ctx.font = 'bold 12px Arial';
         ctx.textAlign = 'left';
-        
+
         // Online players legend
         ctx.fillStyle = '#4caf50';
         ctx.fillRect(padding.left, legendY, 15, 15);
         ctx.fillStyle = '#fff';
         ctx.fillText('Online Players', padding.left + 20, legendY + 12);
-        
+
         // Queue legend
         if (maxQueue > 0) {
             ctx.fillStyle = '#ff9800';
@@ -1239,7 +1412,7 @@ class StatisticsManager {
             ctx.fillStyle = '#fff';
             ctx.fillText('Queue', padding.left + 170, legendY + 12);
         }
-        
+
         // Title
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 14px Arial';
@@ -1253,13 +1426,13 @@ class StatisticsManager {
             console.log('[Charts] Session chart canvas not found');
             return;
         }
-        
+
         const ctx = canvas.getContext('2d');
         canvas.width = canvas.offsetWidth || canvas.parentElement?.clientWidth || 800;
         canvas.height = 300;
-        
+
         const now = Math.floor(Date.now() / 1000);
-        
+
         // Prepare data - show session durations over time (most recent 20)
         // Always calculate duration including active sessions
         const data = sessions
@@ -1272,8 +1445,8 @@ class StatisticsManager {
                     const endTime = s.session_end || now;
                     duration = Math.max(0, endTime - s.session_start);
                 }
-                return { 
-                    x: s.session_start, 
+                return {
+                    x: s.session_start,
                     y: duration / 60,
                     timestamp: s.session_start,
                     isActive: s.is_active
@@ -1282,52 +1455,52 @@ class StatisticsManager {
             .filter(s => s.y > 0)
             .sort((a, b) => a.timestamp - b.timestamp)
             .slice(-20);
-        
+
         console.log('[Charts] Rendering session chart with', data.length, 'data points');
         this.renderSimpleBarChart(ctx, canvas, data, color, 'Session Duration (minutes)');
     }
-    
+
     renderHourlyActivityChart(playByHour, color) {
         const canvas = document.getElementById('hourlyActivityChart');
         if (!canvas) return;
-        
+
         const ctx = canvas.getContext('2d');
         canvas.width = canvas.offsetWidth || canvas.parentElement?.clientWidth || 400;
         canvas.height = 200;
-        
+
         const data = playByHour.map((hours, index) => ({
             x: index,
             y: hours,
             label: `${index}:00`
         }));
-        
+
         this.renderSimpleBarChart(ctx, canvas, data, color, 'Hours Played by Hour of Day');
     }
-    
+
     renderWeeklyActivityChart(playByDay, color) {
         const canvas = document.getElementById('weeklyActivityChart');
         if (!canvas) return;
-        
+
         const ctx = canvas.getContext('2d');
         canvas.width = canvas.offsetWidth || canvas.parentElement?.clientWidth || 400;
         canvas.height = 200;
-        
+
         const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         const data = playByDay.map((hours, index) => ({
             x: index,
             y: hours,
             label: dayNames[index]
         }));
-        
+
         this.renderSimpleBarChart(ctx, canvas, data, color, 'Hours Played by Day of Week');
     }
 
     renderAllSessionsChart(sessionsData, players) {
         const canvas = document.getElementById('allSessionsChart');
         if (!canvas) return;
-        
+
         const ctx = canvas.getContext('2d');
-        
+
         // Create timeline visualization showing when each player was online
         this.renderTimelineChart(ctx, canvas, sessionsData, players);
     }
@@ -1337,7 +1510,7 @@ class StatisticsManager {
         const padding = 40;
         const width = canvas.width - padding * 2;
         const height = canvas.height - padding * 2;
-        
+
         if (!data || data.length === 0) {
             ctx.fillStyle = '#888';
             ctx.font = '14px Arial';
@@ -1345,21 +1518,21 @@ class StatisticsManager {
             ctx.fillText('No data available', canvas.width / 2, canvas.height / 2);
             return;
         }
-        
+
         const maxY = Math.max(...data.map(d => d[yKey])) * 1.1;
         const minY = 0;
-        
+
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.strokeStyle = '#444';
         ctx.lineWidth = 1;
-        
+
         // Draw axes
         ctx.beginPath();
         ctx.moveTo(padding, padding);
         ctx.lineTo(padding, height + padding);
         ctx.lineTo(width + padding, height + padding);
         ctx.stroke();
-        
+
         // Draw grid
         ctx.strokeStyle = '#333';
         ctx.lineWidth = 0.5;
@@ -1369,7 +1542,7 @@ class StatisticsManager {
             ctx.moveTo(padding, y);
             ctx.lineTo(width + padding, y);
             ctx.stroke();
-            
+
             // Y-axis labels
             const value = maxY - (maxY / 5) * i;
             ctx.fillStyle = '#888';
@@ -1377,17 +1550,17 @@ class StatisticsManager {
             ctx.textAlign = 'right';
             ctx.fillText(Math.floor(value).toString(), padding - 5, y + 4);
         }
-        
+
         // Draw line
         ctx.strokeStyle = '#00ff88';
         ctx.fillStyle = 'rgba(0, 255, 136, 0.2)';
         ctx.lineWidth = 2;
-        
+
         ctx.beginPath();
         data.forEach((point, i) => {
             const x = padding + (width / (data.length - 1)) * i;
             const y = padding + height - ((point[yKey] - minY) / (maxY - minY)) * height;
-            
+
             if (i === 0) {
                 ctx.moveTo(x, y);
             } else {
@@ -1395,13 +1568,13 @@ class StatisticsManager {
             }
         });
         ctx.stroke();
-        
+
         // Fill area under line
         ctx.lineTo(width + padding, height + padding);
         ctx.lineTo(padding, height + padding);
         ctx.closePath();
         ctx.fill();
-        
+
         // Title
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 12px Arial';
@@ -1414,9 +1587,9 @@ class StatisticsManager {
         const padding = { left: 50, right: 20, top: 35, bottom: 40 };
         const width = canvas.width - padding.left - padding.right;
         const height = canvas.height - padding.top - padding.bottom;
-        
+
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
+
         if (!data || data.length === 0) {
             ctx.fillStyle = '#888';
             ctx.font = '14px Arial';
@@ -1424,22 +1597,22 @@ class StatisticsManager {
             ctx.fillText('No data available', canvas.width / 2, canvas.height / 2);
             return;
         }
-        
+
         const maxY = Math.max(...data.map(d => d.y), 1) * 1.1;
         const barWidth = Math.max(width / data.length * 0.7, 2);
-        
+
         // Draw title
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 13px Arial';
         ctx.textAlign = 'center';
         ctx.fillText(label, canvas.width / 2, 20);
-        
+
         // Draw bars with gradient
         data.forEach((point, i) => {
             const x = padding.left + (width / data.length) * i + (width / data.length - barWidth) / 2;
             const barHeight = (point.y / maxY) * height;
             const y = padding.top + height - barHeight;
-            
+
             // Gradient fill
             const gradient = ctx.createLinearGradient(x, y, x, y + barHeight);
             const baseColor = color || '#00ff88';
@@ -1449,7 +1622,7 @@ class StatisticsManager {
             gradient.addColorStop(1, gradientColor);
             ctx.fillStyle = gradient;
             ctx.fillRect(x, y, barWidth, barHeight);
-            
+
             // Value on top of bar if space permits
             if (barHeight > 20) {
                 ctx.fillStyle = '#fff';
@@ -1459,7 +1632,7 @@ class StatisticsManager {
                 ctx.fillText(valueText, x + barWidth / 2, y - 5);
             }
         });
-        
+
         // Draw axes
         ctx.strokeStyle = '#444';
         ctx.lineWidth = 2;
@@ -1468,7 +1641,7 @@ class StatisticsManager {
         ctx.lineTo(padding.left, padding.top + height);
         ctx.lineTo(padding.left + width, padding.top + height);
         ctx.stroke();
-        
+
         // Y-axis labels
         ctx.fillStyle = '#888';
         ctx.font = '10px Arial';
@@ -1478,7 +1651,7 @@ class StatisticsManager {
             const value = (maxY / 5) * i;
             const valueText = value >= 60 ? `${Math.floor(value / 60)}h` : `${Math.floor(value)}m`;
             ctx.fillText(valueText, padding.left - 5, y + 4);
-            
+
             // Grid line
             if (i > 0) {
                 ctx.strokeStyle = '#333';
@@ -1489,7 +1662,7 @@ class StatisticsManager {
                 ctx.stroke();
             }
         }
-        
+
         // X-axis labels (show labels if available)
         if (data[0]?.label) {
             ctx.fillStyle = '#888';
@@ -1514,7 +1687,7 @@ class StatisticsManager {
 
         const timeRange = document.getElementById('timeRangeSelect')?.value || '168';
         const steamIds = teamData.players.map(p => p.steamId).join(',');
-        
+
         let url = `/api/statistics/sessions/${this.guildId}?steamIds=${steamIds}&serverId=${this.serverId}`;
         if (timeRange !== 'all') {
             // Add time-based filtering to get ALL sessions in the range
@@ -1528,7 +1701,7 @@ class StatisticsManager {
             // For "all time", use a very high limit
             url += `&limit=50000`;
         }
-        
+
         console.log('[Sessions] Fetching from URL:', url);
         try {
             const sessions = await this.apiClient.get(url);
@@ -1546,10 +1719,10 @@ class StatisticsManager {
             console.log('[Sessions] Canvas not found');
             return;
         }
-        
+
         console.log('[Sessions] Rendering chart with players:', players.length);
         console.log('[Sessions] Sessions data:', sessionsData);
-        
+
         const ctx = canvas.getContext('2d');
         const rowHeight = 45;
         const headerHeight = 10;
@@ -1559,9 +1732,9 @@ class StatisticsManager {
         const fallbackWidth = canvas.getBoundingClientRect().width || 1000;
         canvas.width = canvas.offsetWidth || parentWidth || fallbackWidth;
         canvas.height = (players?.length || 0) * rowHeight + padding.top + padding.bottom;
-        
+
         console.log('[Sessions] Canvas size:', canvas.width, 'x', canvas.height);
-        
+
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         if (!players || players.length === 0) {
@@ -1571,49 +1744,49 @@ class StatisticsManager {
             ctx.fillText('No team data available', canvas.width / 2, canvas.height / 2);
             return;
         }
-        
+
         // Get time range
         const timeRange = document.getElementById('timeRangeSelect')?.value || '168';
         const now = Date.now() / 1000;
         const startTime = timeRange === 'all' ? this.getEarliestSessionTime(sessionsData) : now - (parseInt(timeRange) * 3600);
         const endTime = now;
         const timeSpan = Math.max(1, endTime - startTime);
-        
+
         console.log('[Sessions] Time range:', { timeRange, startTime: new Date(startTime * 1000), endTime: new Date(endTime * 1000), timeSpan });
-        
+
         const chartWidth = canvas.width - padding.left - padding.right;
         const chartHeight = players.length * rowHeight;
-        
+
         // Draw background
         ctx.fillStyle = '#1a1a1a';
         ctx.fillRect(padding.left, padding.top, chartWidth, chartHeight);
-        
+
         // Draw grid lines and time labels
         ctx.strokeStyle = '#333';
         ctx.lineWidth = 1;
         ctx.fillStyle = '#888';
         ctx.font = '11px Arial';
         ctx.textAlign = 'center';
-        
+
         const timeIntervals = timeSpan < 86400 ? 6 : timeSpan < 259200 ? 8 : 10;
         for (let i = 0; i <= timeIntervals; i++) {
             const time = startTime + (timeSpan / timeIntervals) * i;
             const x = padding.left + (chartWidth / timeIntervals) * i;
-            
+
             // Draw grid line
             ctx.beginPath();
             ctx.moveTo(x, padding.top);
             ctx.lineTo(x, padding.top + chartHeight);
             ctx.stroke();
-            
+
             // Draw time label
             const date = new Date(time * 1000);
-            const label = timeSpan < 86400 ? 
+            const label = timeSpan < 86400 ?
                 `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}` :
                 `${date.getMonth() + 1}/${date.getDate()} ${String(date.getHours()).padStart(2, '0')}:00`;
             ctx.fillText(label, x, canvas.height - 10);
         }
-        
+
         const hasSessions = Object.values(sessionsData || {}).some(sessions => sessions.length > 0);
 
         // Draw each player's timeline
@@ -1621,13 +1794,13 @@ class StatisticsManager {
             const y = padding.top + index * rowHeight;
             const playerSessions = sessionsData[player.steamId] || [];
             const playerColor = this.getPlayerColorForTimeline(player.steamId);
-            
+
             console.log(`[Sessions] Player ${player.name} (${player.steamId}): ${playerSessions.length} sessions`, playerSessions);
-            
+
             // Draw player name background
             ctx.fillStyle = '#252525';
             ctx.fillRect(0, y, padding.left - 5, rowHeight - 5);
-            
+
             // Draw player avatar if available
             const img = new Image();
             img.crossOrigin = 'anonymous';
@@ -1640,31 +1813,31 @@ class StatisticsManager {
                 ctx.drawImage(img, 5, y + rowHeight / 2 - 15, 30, 30);
                 ctx.restore();
             };
-            
+
             // Draw player name
             ctx.fillStyle = '#fff';
             ctx.font = 'bold 12px Arial';
             ctx.textAlign = 'left';
             ctx.fillText(player.name.substring(0, 15), 45, y + rowHeight / 2 + 4);
-            
+
             // Draw status indicator
             const isOnline = player.isOnline;
             ctx.fillStyle = isOnline ? '#4caf50' : '#666';
             ctx.beginPath();
             ctx.arc(padding.left - 15, y + rowHeight / 2, 5, 0, Math.PI * 2);
             ctx.fill();
-            
+
             // Draw session bars
             ctx.fillStyle = playerColor;
             playerSessions.forEach(session => {
                 const sessionStart = Math.max(session.session_start, startTime);
                 const sessionEnd = session.session_end ? Math.min(session.session_end, endTime) : endTime;
-                
+
                 if (sessionEnd > startTime && sessionStart < endTime) {
                     const startX = padding.left + ((sessionStart - startTime) / timeSpan) * chartWidth;
                     const endX = padding.left + ((sessionEnd - startTime) / timeSpan) * chartWidth;
                     const width = Math.max(endX - startX, 2);
-                    
+
                     // Draw session bar with gradient
                     const gradient = ctx.createLinearGradient(startX, y + 8, startX, y + rowHeight - 13);
                     // Convert HSL to HSLA for transparency
@@ -1672,9 +1845,9 @@ class StatisticsManager {
                     gradient.addColorStop(0, playerColor);
                     gradient.addColorStop(1, transparentColor);
                     ctx.fillStyle = gradient;
-                    
+
                     ctx.fillRect(startX, y + 8, width, rowHeight - 13);
-                    
+
                     // Add border if session is active
                     if (!session.session_end) {
                         ctx.strokeStyle = '#fff';
@@ -1683,7 +1856,7 @@ class StatisticsManager {
                     }
                 }
             });
-            
+
             // Draw horizontal separator
             ctx.strokeStyle = '#333';
             ctx.lineWidth = 1;
@@ -1692,7 +1865,7 @@ class StatisticsManager {
             ctx.lineTo(canvas.width, y + rowHeight - 2);
             ctx.stroke();
         });
-        
+
         // Draw border
         ctx.strokeStyle = '#555';
         ctx.lineWidth = 2;
@@ -1704,7 +1877,7 @@ class StatisticsManager {
             ctx.textAlign = 'center';
             ctx.fillText('No sessions recorded yet', padding.left + chartWidth / 2, padding.top + chartHeight / 2);
         }
-        
+
         // Draw "now" indicator
         const nowX = padding.left + ((now - startTime) / timeSpan) * chartWidth;
         ctx.strokeStyle = '#ff5722';
@@ -1715,14 +1888,14 @@ class StatisticsManager {
         ctx.lineTo(nowX, padding.top + chartHeight);
         ctx.stroke();
         ctx.setLineDash([]);
-        
+
         // "Now" label
         ctx.fillStyle = '#ff5722';
         ctx.font = 'bold 11px Arial';
         ctx.textAlign = 'center';
         ctx.fillText('NOW', nowX, padding.top - 5);
     }
-    
+
     getEarliestSessionTime(sessionsData) {
         let earliest = Date.now() / 1000;
         Object.values(sessionsData).forEach(sessions => {
@@ -1734,7 +1907,7 @@ class StatisticsManager {
         });
         return earliest;
     }
-    
+
     getPlayerColorForTimeline(steamId) {
         // Generate consistent color from steam ID
         const colors = window.rustplusUI?.playerColors;
@@ -1753,7 +1926,7 @@ class StatisticsManager {
         const hue = Math.abs(hash) % 360;
         return `hsl(${hue}, 70%, 50%)`;
     }
-    
+
     async confirmResetStats() {
         // Check if PIN is required
         if (this.hasPinCode) {
@@ -1764,11 +1937,11 @@ class StatisticsManager {
             await this.performReset();
         }
     }
-    
+
     showResetPinVerification() {
         const body = document.getElementById('statisticsBody');
         const currentView = this.currentView;
-        
+
         body.innerHTML = `
             <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 400px; padding: 40px;">
                 <div style="background: var(--bg-primary); padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); max-width: 500px; width: 100%;">
@@ -1794,7 +1967,7 @@ class StatisticsManager {
                 </div>
             </div>
         `;
-        
+
         // Focus input and allow Enter key
         setTimeout(() => {
             const input = document.getElementById('resetPinInput');
@@ -1808,20 +1981,20 @@ class StatisticsManager {
             }
         }, 100);
     }
-    
+
     async verifyResetPin() {
         const input = document.getElementById('resetPinInput');
         const errorDiv = document.getElementById('resetPinError');
         const pin = input?.value || '';
-        
+
         if (!pin) {
             errorDiv.textContent = 'Please enter PIN code';
             return;
         }
-        
+
         try {
             const result = await this.apiClient.post(`/api/statistics/verify-pin/${this.guildId}`, { pin });
-            
+
             if (result.success) {
                 // PIN verified, proceed with reset
                 await this.performReset();
@@ -1835,20 +2008,20 @@ class StatisticsManager {
             errorDiv.textContent = '❌ Error verifying PIN';
         }
     }
-    
+
     async performReset() {
         if (!confirm('⚠️ FINAL WARNING\n\nAre you absolutely sure you want to reset ALL statistics?\n\nThis action cannot be undone!')) {
             await this.switchTab(this.currentView);
             return;
         }
-        
+
         try {
             const body = document.getElementById('statisticsBody');
             body.innerHTML = '<div class="loading">Resetting statistics...</div>';
-            
+
             await this.apiClient.post(`/api/statistics/reset/${this.guildId}`, {});
             alert('✅ Statistics have been reset successfully!');
-            
+
             // Reload current view
             await this.switchTab(this.currentView);
         } catch (error) {

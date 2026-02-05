@@ -363,12 +363,13 @@ class DiscordBot extends Discord.Client {
 
     findAvailableTrackerId(guildId) {
         const instance = this.getInstance(guildId);
+        let id = 1;
 
         while (true) {
-            const randomNumber = Math.floor(Math.random() * 1000);
-            if (!instance.trackers.hasOwnProperty(randomNumber)) {
-                return randomNumber;
+            if (!instance.trackers.hasOwnProperty(id)) {
+                return id;
             }
+            id++;
         }
     }
 

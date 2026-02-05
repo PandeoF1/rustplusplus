@@ -80,6 +80,7 @@
     "cargoShipLeftSetting": "Cuando el cargo deje el mapa, envíe una notificación.",
     "cargoShipLocated": "El cargo está en {location}.",
     "cargoship": "Cargo",
+    "channelName": "Nombre del canal",
     "ceilingLight": "Lámpara de techo",
     "channelNameActivity": "actividad",
     "channelNameAlarms": "alarmas",

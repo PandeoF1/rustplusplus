@@ -31,7 +31,7 @@ class StatisticsDatabase {
             }
             dbPath = Path.join(dbDir, 'statistics.db');
         }
-        
+
         this.db = new Database(dbPath);
         this.db.pragma('journal_mode = WAL'); // Better concurrent access
         this.initializeTables();
@@ -176,10 +176,10 @@ class StatisticsDatabase {
     }
 
     // ==================== PLAYER SESSIONS ====================
-    
+
     startPlayerSession(guildId, serverId, steamId, playerName, mergeGapSeconds = 120) {
         const timestamp = Math.floor(Date.now() / 1000);
-        
+
         // Check if there's a recent ended session within merge gap (bot restart scenario)
         const recentStmt = this.db.prepare(`
             SELECT * FROM player_sessions
@@ -189,7 +189,7 @@ class StatisticsDatabase {
             LIMIT 1
         `);
         const recentSession = recentStmt.get(guildId, steamId);
-        
+
         // If found a session that ended within merge gap, resume it instead of creating new
         if (recentSession && (timestamp - recentSession.session_end) <= mergeGapSeconds) {
             const resumeStmt = this.db.prepare(`
@@ -199,7 +199,7 @@ class StatisticsDatabase {
             `);
             return resumeStmt.run(recentSession.id);
         }
-        
+
         // Otherwise create new session
         const stmt = this.db.prepare(`
             INSERT INTO player_sessions (guild_id, server_id, steam_id, player_name, session_start)
@@ -311,7 +311,7 @@ class StatisticsDatabase {
                         INSERT INTO player_sessions (guild_id, server_id, steam_id, player_name, session_start, session_end, is_active, duration_seconds)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     `);
-                    
+
                     merged.forEach(m => {
                         const duration = m.is_active ? null : ((m.session_end || now) - m.session_start);
                         insertStmt.run(
@@ -326,7 +326,7 @@ class StatisticsDatabase {
                         );
                     });
                 });
-                
+
                 transaction();
                 totalMerged += (sessions.length - merged.length);
             }
@@ -359,7 +359,7 @@ class StatisticsDatabase {
     }
 
     // ==================== PLAYER POSITIONS ====================
-    
+
     recordPlayerPosition(guildId, serverId, steamId, x, y, isAlive = true) {
         const stmt = this.db.prepare(`
             INSERT INTO player_positions (guild_id, server_id, steam_id, x, y, timestamp, is_alive)
@@ -407,7 +407,7 @@ class StatisticsDatabase {
     }
 
     // ==================== PLAYER DEATHS ====================
-    
+
     recordPlayerDeath(guildId, serverId, steamId, playerName, x = null, y = null) {
         const stmt = this.db.prepare(`
             INSERT INTO player_deaths (guild_id, server_id, steam_id, player_name, x, y, death_time)
@@ -474,33 +474,114 @@ class StatisticsDatabase {
     }
 
     // ==================== CHAT HISTORY ====================
-    
+
     recordChatMessage(guildId, serverId, steamId, playerName, message) {
-        const stmt = this.db.prepare(`
-            INSERT INTO chat_history (guild_id, server_id, steam_id, player_name, message, timestamp)
-            VALUES (?, ?, ?, ?, ?, ?)
-        `);
-        const timestamp = Math.floor(Date.now() / 1000);
-        return stmt.run(guildId, serverId, steamId, playerName, message, timestamp);
+        try {
+            const stmt = this.db.prepare(`
+                INSERT INTO chat_history (guild_id, server_id, steam_id, player_name, message, timestamp)
+                VALUES (?, ?, ?, ?, ?, ?)
+            `);
+            const timestamp = Math.floor(Date.now() / 1000);
+            const result = stmt.run(guildId, serverId || 'all', steamId, playerName, message, timestamp);
+            console.log(`[StatisticsDB] Recorded message from ${playerName} for guild ${guildId} (server: ${serverId || 'all'})`);
+            return result;
+        } catch (error) {
+            console.error(`[StatisticsDB] Failed to record chat message: ${error.message}`);
+            throw error;
+        }
     }
 
     getChatHistory(guildId, serverId, limit = 100) {
-        if (serverId && serverId !== '') {
-            const stmt = this.db.prepare(`
-                SELECT * FROM chat_history
-                WHERE guild_id = ? AND (server_id = ? OR server_id IS NULL OR server_id = '')
-                ORDER BY timestamp DESC
-                LIMIT ?
+        try {
+            console.log(`[StatisticsDB] Fetching chat history: guild=${guildId}, server=${serverId || 'all'}, limit=${limit}`);
+
+            if (serverId && serverId !== '') {
+                const stmt = this.db.prepare(`
+                    SELECT * FROM chat_history
+                    WHERE guild_id = ? AND (server_id = ? OR server_id IS NULL OR server_id = '' OR server_id = 'all')
+                    ORDER BY timestamp DESC
+                    LIMIT ?
+                `);
+                let results = stmt.all(guildId, serverId, limit);
+
+                console.log(`[StatisticsDB] Query with serverId returned ${results.length} messages`);
+
+                // Fallback: if no results for this server, try getting all for the guild
+                if (results.length === 0) {
+                    console.log(`[StatisticsDB] Falling back to all messages for guild ${guildId}`);
+                    const fallbackStmt = this.db.prepare(`
+                        SELECT * FROM chat_history
+                        WHERE guild_id = ?
+                        ORDER BY timestamp DESC
+                        LIMIT ?
+                    `);
+                    results = fallbackStmt.all(guildId, limit);
+                    console.log(`[StatisticsDB] Fallback returned ${results.length} messages`);
+                }
+
+                return results;
+            } else {
+                const stmt = this.db.prepare(`
+                    SELECT * FROM chat_history
+                    WHERE guild_id = ?
+                    ORDER BY timestamp DESC
+                    LIMIT ?
+                `);
+                const results = stmt.all(guildId, limit);
+                console.log(`[StatisticsDB] Generic guild query returned ${results.length} messages`);
+                return results;
+            }
+        } catch (error) {
+            console.error(`[StatisticsDB] Error fetching chat history: ${error.message}`);
+            return [];
+        }
+    }
+
+    upsertChatMessage(guildId, serverId, steamId, playerName, message, timestamp) {
+        try {
+            // Check for exact duplicate (same player, same message, same approximate time)
+            // Using a 2-second window for variations in time reporting
+            const checkStmt = this.db.prepare(`
+                SELECT id FROM chat_history
+                WHERE guild_id = ? AND steam_id = ? AND message = ? AND ABS(timestamp - ?) <= 2
             `);
-            return stmt.all(guildId, serverId, limit);
-        } else {
+            const existing = checkStmt.get(guildId, steamId, message, timestamp);
+
+            if (existing) return { changes: 0, reason: 'duplicate' };
+
             const stmt = this.db.prepare(`
-                SELECT * FROM chat_history
-                WHERE guild_id = ?
-                ORDER BY timestamp DESC
-                LIMIT ?
+                INSERT INTO chat_history (guild_id, server_id, steam_id, player_name, message, timestamp)
+                VALUES (?, ?, ?, ?, ?, ?)
             `);
-            return stmt.all(guildId, limit);
+            return stmt.run(guildId, serverId || 'all', steamId, playerName, message, timestamp);
+        } catch (error) {
+            console.error(`[StatisticsDB] Failed to upsert chat message: ${error.message}`);
+            return { changes: 0, error: error.message };
+        }
+    }
+
+    findSteamIdByName(guildId, playerName) {
+        try {
+            // Try to find steam_id from recent sessions or deaths
+            const stmt = this.db.prepare(`
+                SELECT steam_id FROM player_sessions 
+                WHERE guild_id = ? AND player_name = ?
+                ORDER BY session_start DESC
+                LIMIT 1
+            `);
+            const result = stmt.get(guildId, playerName);
+            if (result) return result.steam_id;
+
+            const deathStmt = this.db.prepare(`
+                SELECT steam_id FROM player_deaths
+                WHERE guild_id = ? AND player_name = ?
+                ORDER BY death_time DESC
+                LIMIT 1
+            `);
+            const deathResult = deathStmt.get(guildId, playerName);
+            return deathResult ? deathResult.steam_id : null;
+        } catch (error) {
+            return null;
         }
     }
 
@@ -525,7 +606,7 @@ class StatisticsDatabase {
     }
 
     // ==================== COMMAND HISTORY ====================
-    
+
     recordCommand(guildId, serverId, command, steamId = null, playerName = null) {
         const stmt = this.db.prepare(`
             INSERT INTO command_history (guild_id, server_id, steam_id, player_name, command, timestamp)
@@ -556,7 +637,7 @@ class StatisticsDatabase {
     }
 
     // ==================== CONNECTION STATS ====================
-    
+
     recordConnectionStats(guildId, serverId, onlinePlayers, maxPlayers, queuedPlayers = 0) {
         const stmt = this.db.prepare(`
             INSERT INTO connection_stats (guild_id, server_id, timestamp, online_players, max_players, queued_players)
@@ -585,13 +666,13 @@ class StatisticsDatabase {
     }
 
     // ==================== PLAYER COLORS ====================
-    
+
     getPlayerColor(steamId) {
         const stmt = this.db.prepare('SELECT color FROM player_colors WHERE steam_id = ?');
         const result = stmt.get(steamId);
-        
+
         if (result) return result.color;
-        
+
         // Generate new color
         const color = this.generateUniqueColor(steamId);
         this.db.prepare('INSERT INTO player_colors (steam_id, color) VALUES (?, ?)').run(steamId, color);
@@ -603,23 +684,23 @@ class StatisticsDatabase {
         const hash = steamId.split('').reduce((acc, char) => {
             return char.charCodeAt(0) + ((acc << 5) - acc);
         }, 0);
-        
+
         const hue = Math.abs(hash % 360);
         const saturation = 70 + (Math.abs(hash) % 30);
         const lightness = 50 + (Math.abs(hash >> 8) % 20);
-        
+
         return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
     }
 
     // ==================== STATISTICS & ANALYTICS ====================
-    
+
     getPlayerStatistics(guildId, serverId, steamId) {
         const sessions = this.getPlayerSessions(guildId, serverId, steamId, 1000);
         const deaths = this.getTotalDeaths(guildId, serverId, steamId);
-        
+
         const now = Math.floor(Date.now() / 1000);
         const completedSessions = sessions.filter(s => !s.is_active);
-        
+
         // Calculate total playtime including active sessions
         const totalPlaytime = sessions.reduce((sum, s) => {
             if (s.is_active) {
@@ -628,13 +709,13 @@ class StatisticsDatabase {
             }
             return sum + (s.duration_seconds || 0);
         }, 0);
-        
+
         // For averages, use completed sessions only
-        const avgSession = completedSessions.length > 0 
-            ? completedSessions.reduce((sum, s) => sum + (s.duration_seconds || 0), 0) / completedSessions.length 
+        const avgSession = completedSessions.length > 0
+            ? completedSessions.reduce((sum, s) => sum + (s.duration_seconds || 0), 0) / completedSessions.length
             : 0;
         const longestSession = Math.max(...completedSessions.map(s => s.duration_seconds || 0), 0);
-        
+
         return {
             steamId,
             totalSessions: sessions.length,
@@ -652,11 +733,11 @@ class StatisticsDatabase {
 
     getTeamStatistics(guildId, serverId, steamIds) {
         const stats = steamIds.map(id => this.getPlayerStatistics(guildId, serverId, id));
-        
+
         const totalPlaytime = stats.reduce((sum, s) => sum + s.totalPlaytimeSeconds, 0);
         const totalSessions = stats.reduce((sum, s) => sum + s.totalSessions, 0);
         const avgTeamSession = totalSessions > 0 ? totalPlaytime / totalSessions : 0;
-        
+
         return {
             playerCount: steamIds.length,
             totalPlaytimeSeconds: totalPlaytime,
@@ -670,7 +751,7 @@ class StatisticsDatabase {
 
     getServerStatistics(guildId, serverId, days = 7) {
         const startTime = Math.floor(Date.now() / 1000) - (days * 24 * 3600);
-        
+
         if (serverId && serverId !== '') {
             const stmt = this.db.prepare(`
                 SELECT 
@@ -697,7 +778,7 @@ class StatisticsDatabase {
     }
 
     // ==================== MAINTENANCE & CLEANUP ====================
-    
+
     setupMaintenanceSchedule() {
         // Run maintenance every hour
         setInterval(() => this.performMaintenance(), 3600000);
@@ -707,12 +788,12 @@ class StatisticsDatabase {
         const now = Math.floor(Date.now() / 1000);
         const oneMonthAgo = now - (30 * 24 * 3600);
         const maxRecords = 5000000; // 5 million records max per table (for 1 month of positions)
-        
+
         let totalDeleted = 0;
 
         // Keep all position records within 1 month (no deletion by time)
         // Only limit by record count if table grows too large
-        
+
         // Clean old connection stats (keep last 30 days)
         const statsDeleted = this.db.prepare(`
             DELETE FROM connection_stats WHERE timestamp < ?
@@ -723,14 +804,14 @@ class StatisticsDatabase {
         this.limitTableSize('player_positions', maxRecords);
         this.limitTableSize('chat_history', 500000);
         this.limitTableSize('connection_stats', 200000);
-        
+
         // Log maintenance
         if (totalDeleted > 0) {
             this.db.prepare(`
                 INSERT INTO maintenance_log (maintenance_type, records_deleted, timestamp)
                 VALUES (?, ?, ?)
             `).run('scheduled_cleanup', totalDeleted, now);
-            
+
             console.log(`[Statistics] Maintenance completed: ${totalDeleted} records cleaned`);
         }
 
@@ -740,7 +821,7 @@ class StatisticsDatabase {
 
     limitTableSize(tableName, maxRecords) {
         const count = this.db.prepare(`SELECT COUNT(*) as count FROM ${tableName}`).get().count;
-        
+
         if (count > maxRecords) {
             const toDelete = count - maxRecords;
             this.db.prepare(`
@@ -751,7 +832,7 @@ class StatisticsDatabase {
                     LIMIT ?
                 )
             `).run(toDelete);
-            
+
             console.log(`[Statistics] Trimmed ${toDelete} old records from ${tableName}`);
         }
     }
@@ -784,27 +865,27 @@ class StatisticsDatabase {
             'command_history',
             'connection_stats'
         ];
-        
+
         let totalDeleted = 0;
         tables.forEach(table => {
             const result = this.db.prepare(`DELETE FROM ${table} WHERE guild_id = ?`).run(guildId);
             totalDeleted += result.changes;
         });
-        
+
         // Log the reset
         const now = Math.floor(Date.now() / 1000);
         this.db.prepare(`
             INSERT INTO maintenance_log (maintenance_type, records_deleted, timestamp)
             VALUES (?, ?, ?)
         `).run('guild_reset', totalDeleted, now);
-        
+
         console.log(`[Statistics] Reset statistics for guild ${guildId}: ${totalDeleted} records deleted`);
-        
+
         return { deleted: totalDeleted };
     }
 
     // ==================== PIN CODE MANAGEMENT ====================
-    
+
     hasPinCode(guildId) {
         const stmt = this.db.prepare(`
             SELECT guild_id FROM pin_codes WHERE guild_id = ?
@@ -812,7 +893,7 @@ class StatisticsDatabase {
         const result = stmt.get(guildId);
         return !!result;
     }
-    
+
     getPinHash(guildId) {
         const stmt = this.db.prepare(`
             SELECT pin_hash FROM pin_codes WHERE guild_id = ?
@@ -820,7 +901,7 @@ class StatisticsDatabase {
         const result = stmt.get(guildId);
         return result ? result.pin_hash : null;
     }
-    
+
     setPinCode(guildId, pinHash) {
         const now = Math.floor(Date.now() / 1000);
         const stmt = this.db.prepare(`
@@ -829,7 +910,7 @@ class StatisticsDatabase {
         `);
         stmt.run(guildId, pinHash, guildId, now, now);
     }
-    
+
     removePinCode(guildId) {
         const stmt = this.db.prepare(`
             DELETE FROM pin_codes WHERE guild_id = ?

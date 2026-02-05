@@ -24,9 +24,18 @@ const DiscordTools = require('./discordTools.js');
 module.exports = async (client, guild) => {
     const instance = client.getInstance(guild.id);
 
-    await DiscordTools.clearTextChannel(guild.id, instance.channelId.trackers, 100);
+    // Solo limpiar el canal global si hay trackers que lo usan
+    const globalTrackersExist = Object.values(instance.trackers).some(t => !t.channelId);
+    if (globalTrackersExist && instance.channelId.trackers) {
+        await DiscordTools.clearTextChannel(guild.id, instance.channelId.trackers, 100);
+    }
 
     for (const trackerId in instance.trackers) {
+        const tracker = instance.trackers[trackerId];
+        // Si el tracker tiene su propio canal, limpiarlo antes de enviar el nuevo mensaje
+        if (tracker.channelId) {
+            await DiscordTools.clearTextChannel(guild.id, tracker.channelId, 100);
+        }
         await DiscordMessages.sendTrackerMessage(guild.id, trackerId);
     }
 }
