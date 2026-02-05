@@ -23,13 +23,13 @@
                 <div class="header-separator"></div>
                 <nav class="header-nav">
                     <button id="shopsButton" class="header-nav-btn" data-i18n="header.shops">
-                        SHOPS BROWSER
+                        Shops Browser
                     </button>
                     <button id="switchesNavBtn" class="header-nav-btn" data-i18n="header.switches">
-                        SMART SWITCHES
+                        Smart Switches
                     </button>
                     <button id="trackersNavBtn" class="header-nav-btn" data-i18n="header.trackers">
-                        TRACKERS
+                        Trackers
                     </button>
                     <!-- Future tabs here -->
                 </nav>
@@ -124,15 +124,15 @@
                                             data-i18n="notifications.type.chinook">Chinook</span></label>
                                     <label><input type="checkbox" id="notify_vendingMachineDetectedSetting"> <span
                                             data-i18n="notifications.type.vending">New Shop</span></label>
-                                    <label><input type="checkbox" id="notify_raid"> <span
+                                        <label><input type="checkbox" id="notify_raid"> <span
                                             data-i18n="notifications.filter.raid">Raids (FCM)</span></label>
                                     <label><input type="checkbox" id="notify_death"> <span
                                             data-i18n="notifications.filter.death">Deaths</span></label>
                                 </div>
                             </div>
                             <div class="settings-view-footer">
-                                <button id="saveNotificationSettings" class="settings-btn save">Save</button>
-                                <button id="cancelNotificationSettings" class="settings-btn cancel">Cancel</button>
+                                <button id="saveNotificationSettings" class="settings-btn save" data-i18n="notifications.save">Save</button>
+                                <button id="cancelNotificationSettings" class="settings-btn cancel" data-i18n="notifications.cancel">Cancel</button>
                             </div>
                         </div>
                     </div>
@@ -533,10 +533,10 @@
                 <button class="close-vending-btn" id="closePlayerListBtn">&times;</button>
             </div>
             <div class="vending-controls">
-                <input type="text" id="playerSearch" placeholder="Search players..."
+                <input type="text" id="playerSearch" data-i18n-placeholder="players.search"
                     style="flex: 1; padding: 0.6rem; background: var(--bg-secondary); border: 1px solid var(--border); color: white; border-radius: 4px;">
                 <div class="vending-stats">
-                    <span id="playerCountDisplay">0</span> online
+                    <span id="playerCountDisplay">0</span> <span data-i18n="players.online">online</span>
                 </div>
             </div>
             <div class="vending-list" id="playerListContainer"
@@ -562,27 +562,27 @@
     <div id="editSwitchModal" class="edit-modal-overlay">
         <div class="edit-modal-content">
             <div class="edit-modal-header">
-                <h3 data-i18n="switches.edit.title">Editar Interruptor</h3>
+                <h3 data-i18n="switches.edit.title">Edit Switch</h3>
                 <button class="close-edit-modal">&times;</button>
             </div>
             <div class="edit-modal-body">
                 <div class="form-group">
-                    <label for="editSwitchName" data-i18n="switches.edit.nameLabel">Nombre</label>
-                    <input type="text" id="editSwitchName" placeholder="Nombre del interruptor"
+                    <label for="editSwitchName" data-i18n="switches.edit.nameLabel">Name</label>
+                    <input type="text" id="editSwitchName" placeholder="Switch name"
                         data-i18n-placeholder="switches.edit.namePlaceholder">
                 </div>
                 <div class="form-group">
-                    <label for="editSwitchCommand" data-i18n="switches.edit.commandLabel">Comando Personalizado</label>
+                    <label for="editSwitchCommand" data-i18n="switches.edit.commandLabel">Custom Command</label>
                     <div class="input-prefix-group">
                         <span class="prefix">!</span>
-                        <input type="text" id="editSwitchCommand" placeholder="comando"
+                        <input type="text" id="editSwitchCommand" placeholder="command"
                             data-i18n-placeholder="switches.edit.commandPlaceholder">
                     </div>
                 </div>
             </div>
             <div class="edit-modal-footer">
-                <button id="cancelEditBtn" class="btn-cancel" data-i18n="switches.edit.cancel">Cancelar</button>
-                <button id="saveEditBtn" class="btn-save" data-i18n="switches.edit.save">Guardar Cambios</button>
+                <button id="cancelEditBtn" class="btn-cancel" data-i18n="switches.edit.cancel">Cancel</button>
+                <button id="saveEditBtn" class="btn-save" data-i18n="switches.edit.save">Save Changes</button>
             </div>
         </div>
     </div>
@@ -591,51 +591,50 @@
     <div id="editTrackerModal" class="edit-modal-overlay">
         <div class="edit-modal-content" style="max-width: 500px;">
             <div class="edit-modal-header">
-                <h3 data-i18n="trackers.edit.title">Editar Tracker</h3>
+                <h3 data-i18n="trackers.edit.title">Edit Tracker</h3>
                 <button class="close-edit-modal">&times;</button>
             </div>
             <div class="edit-modal-body">
                 <div class="form-group" style="margin-bottom: 1rem; display: flex; flex-direction: column;">
-                    <label data-i18n="trackers.edit.nameLabel">Nombre del Tracker</label>
-                    <input type="text" id="editTrackerName" placeholder="Tracker"
+                    <label data-i18n="trackers.edit.nameLabel">Tracker Name</label>
+                    <input type="text" id="editTrackerName" placeholder="Tracker Name"
                         data-i18n-placeholder="trackers.edit.namePlaceholder"
                         style="padding: 0.6rem; background: var(--bg-primary); border: 1px solid var(--border); color: white; border-radius: 4px;">
                 </div>
                 <div class="form-group" style="margin-bottom: 1rem; display: flex; flex-direction: column;">
-                    <label data-i18n="trackers.edit.bmIdLabel">ID de BattleMetrics</label>
+                    <label data-i18n="trackers.edit.bmIdLabel">Battlemetrics ID</label>
                     <input type="text" id="editTrackerBMId" placeholder="ID"
                         data-i18n-placeholder="trackers.edit.bmIdPlaceholder"
                         style="padding: 0.6rem; background: var(--bg-primary); border: 1px solid var(--border); color: white; border-radius: 4px;">
                 </div>
                 <div class="form-group" style="margin-bottom: 1rem; display: flex; flex-direction: column;">
-                    <label data-i18n="trackers.edit.clanTagLabel">Etiqueta de Clan (opcional)</label>
+                    <label data-i18n="trackers.edit.clanTagLabel">Clan Tag</label>
                     <input type="text" id="editTrackerClanTag" placeholder="ABC"
                         data-i18n-placeholder="trackers.edit.clanTagPlaceholder"
                         style="padding: 0.6rem; background: var(--bg-primary); border: 1px solid var(--border); color: white; border-radius: 4px;">
                 </div>
                 <div class="form-group" style="margin-bottom: 1rem; display: flex; flex-direction: column;">
-                    <label data-i18n="trackers.edit.channelLabel">Nombre del Canal de Discord</label>
-                    <input type="text" id="editTrackerChannelName" placeholder="tracker-channel"
-                        data-i18n-placeholder="trackers.edit.channelPlaceholder"
+                    <label data-i18n="trackers.edit.channelLabel">Discord Channel Name</label>
+                    <input type="text" id="editTrackerChannelName" data-i18n-placeholder="trackers.edit.channelPlaceholder"
                         style="padding: 0.6rem; background: var(--bg-primary); border: 1px solid var(--border); color: white; border-radius: 4px;">
                 </div>
                 <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
                     <label
                         style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-secondary);">
                         <input type="checkbox" id="editTrackerEveryone"> <span
-                            data-i18n="trackers.edit.everyoneLabel">Mencionar a todos (@everyone)</span>
+                            data-i18n="trackers.edit.everyoneLabel">Mention @everyone</span>
                     </label>
                     <label
                         style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-secondary);">
                         <input type="checkbox" id="editTrackerInGame" checked> <span
-                            data-i18n="trackers.edit.inGameLabel">Rastrear solo in-game</span>
+                            data-i18n="trackers.edit.inGameLabel">Track in-game activities</span>
                     </label>
                 </div>
 
             </div>
             <div class="edit-modal-footer">
-                <button id="cancelTrackerEditBtn" class="btn-cancel" data-i18n="switches.edit.cancel">Cancelar</button>
-                <button id="saveTrackerEditBtn" class="btn-save" data-i18n="switches.edit.save">Guardar Cambios</button>
+                <button id="cancelTrackerEditBtn" class="btn-cancel" data-i18n="switches.edit.cancel">Cancel</button>
+                <button id="saveTrackerEditBtn" class="btn-save" data-i18n="switches.edit.save">Save Changes</button>
             </div>
         </div>
     </div>
@@ -644,24 +643,22 @@
     <div id="addTrackerPlayerModal" class="edit-modal-overlay">
         <div class="edit-modal-content" style="max-width: 400px;">
             <div class="edit-modal-header">
-                <h3 data-i18n="trackers.modal.addPlayer.title">Añadir Jugador al Tracker</h3>
+                <h3 data-i18n="trackers.modal.addPlayer.title">Add Player</h3>
                 <button class="close-edit-modal">&times;</button>
             </div>
             <div class="edit-modal-body">
                 <div class="form-group" style="margin-bottom: 1rem;">
-                    <label data-i18n="trackers.modal.addPlayer.label">SteamID64 o ID de BattleMetrics</label>
-                    <input type="text" id="addTrackerPlayerId_new" placeholder="76561198..."
-                        data-i18n-placeholder="trackers.modal.addPlayer.placeholder"
+                    <label data-i18n="trackers.modal.addPlayer.label">SteamID64 or PlayerID</label>
+                    <input type="text" id="addTrackerPlayerId_new" data-i18n-placeholder="trackers.modal.addPlayer.placeholder"
                         style="width: 100%; padding: 0.8rem; background: var(--bg-primary); border: 1px solid var(--border); color: white; border-radius: 4px; font-size: 1rem; margin-top: 0.5rem;">
                 </div>
-                <p style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4;">
-                    Introduce el SteamID64 (ej: 76561198...) o el ID numérico de BattleMetrics para rastrear al jugador.
+                <p style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4;" data-i18n="trackers.modal.addPlayer.description">
+                    Enter the SteamID64 (e.g: 76561198...) or BattleMetrics numeric ID to track the player.
                 </p>
             </div>
             <div class="edit-modal-footer">
-                <button id="cancelAddPlayerBtn" class="btn-cancel" data-i18n="switches.edit.cancel">Cancelar</button>
-                <button id="confirmAddPlayerBtn" class="btn-save" data-i18n="trackers.action.addPlayer">Añadir
-                    Jugador</button>
+                <button id="cancelAddPlayerBtn" class="btn-cancel" data-i18n="switches.edit.cancel">Cancel</button>
+                <button id="confirmAddPlayerBtn" class="btn-save" data-i18n="trackers.action.addPlayer">Add Player</button>
             </div>
         </div>
     </div>
@@ -670,7 +667,7 @@
     <div id="removeTrackerPlayerModal" class="edit-modal-overlay">
         <div class="edit-modal-content" style="max-width: 450px;">
             <div class="edit-modal-header">
-                <h3 data-i18n="trackers.modal.manage.title">Gestionar Jugadores</h3>
+                <h3 data-i18n="trackers.modal.manage.title">Manage Players</h3>
                 <button class="close-edit-modal">&times;</button>
             </div>
             <div class="edit-modal-body">
@@ -679,7 +676,7 @@
                 </div>
             </div>
             <div class="edit-modal-footer">
-                <button id="closeRemovePlayerBtn" class="btn-cancel" data-i18n="stats.close">Cerrar</button>
+                <button id="closeRemovePlayerBtn" class="btn-cancel" data-i18n="stats.close">Close</button>
             </div>
         </div>
     </div>
@@ -688,16 +685,16 @@
     <div id="confirmModal" class="edit-modal-overlay">
         <div class="edit-modal-content" style="max-width: 400px; text-align: center;">
             <div class="edit-modal-header">
-                <h3 id="confirmTitle">Confirmación</h3>
+                <h3 id="confirmTitle" data-i18n="confirm.title">Confirmation</h3>
             </div>
             <div class="edit-modal-body" style="padding: 2.5rem 1.5rem;">
-                <p id="confirmMessage" style="font-size: 1.1rem; line-height: 1.5; color: var(--text-primary);">¿Estás
+                <p id="confirmMessage" style="font-size: 1.1rem; line-height: 1.5; color: var(--text-primary);" data-i18n="confirm.message">¿Estás
                     seguro de realizar esta acción?</p>
             </div>
             <div class="edit-modal-footer" style="justify-content: center; gap: 15px; padding-bottom: 2rem;">
-                <button id="confirmCancelBtn" class="btn-cancel" style="min-width: 100px;">Cancelar</button>
+                <button id="confirmCancelBtn" class="btn-cancel" style="min-width: 100px;" data-i18n="confirm.cancel">Cancel</button>
                 <button id="confirmOkBtn" class="btn-save"
-                    style="background: var(--accent); min-width: 100px;">Confirmar</button>
+                    style="background: var(--accent); min-width: 100px;" data-i18n="confirm.ok">Confirm</button>
             </div>
         </div>
     </div>
