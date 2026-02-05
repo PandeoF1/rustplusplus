@@ -227,6 +227,25 @@ class StatisticsDatabase {
         return stmt.get(guildId, steamId);
     }
 
+    resumeMostRecentSession(guildId, steamId) {
+        const stmt = this.db.prepare(`
+            SELECT * FROM player_sessions
+            WHERE guild_id = ? AND steam_id = ? AND is_active = 0
+            ORDER BY session_end DESC
+            LIMIT 1
+        `);
+        const recentSession = stmt.get(guildId, steamId);
+        if (!recentSession) return null;
+
+        const resumeStmt = this.db.prepare(`
+            UPDATE player_sessions
+            SET session_end = NULL, is_active = 1, duration_seconds = NULL
+            WHERE id = ?
+        `);
+        resumeStmt.run(recentSession.id);
+        return recentSession;
+    }
+
     getPlayerSessions(guildId, serverId, steamId, limit = 100) {
         if (serverId && serverId !== '') {
             const stmt = this.db.prepare(`

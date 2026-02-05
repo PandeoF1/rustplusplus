@@ -239,9 +239,16 @@ class StatisticsTracker {
             if (!player.isOnline || !player.steamId) return;
             const activeSession = this.db.getActiveSession(guildId, player.steamId);
             if (!activeSession) {
-                this.client.log(this.client.intlGet(null, 'infoCap'), 
-                    `Statistics: starting session for online player ${player.name} (${player.steamId}) after restart`);
-                this.db.startPlayerSession(guildId, serverId, player.steamId, player.name);
+                // Resume the most recent session to preserve original start time
+                const resumed = this.db.resumeMostRecentSession(guildId, player.steamId);
+                if (resumed) {
+                    this.client.log(this.client.intlGet(null, 'infoCap'),
+                        `Statistics: resumed session for ${player.name} (${player.steamId}) after restart`);
+                } else {
+                    this.client.log(this.client.intlGet(null, 'infoCap'),
+                        `Statistics: starting session for online player ${player.name} (${player.steamId}) after restart`);
+                    this.db.startPlayerSession(guildId, serverId, player.steamId, player.name);
+                }
             }
         });
 
