@@ -291,16 +291,13 @@ class StatisticsTracker {
             if (!rustplus || !rustplus.isOperational || !rustplus.team) continue;
 
             const activeSessions = this.db.getAllActiveSessions(guildId);
-            if (activeSessions.length === 0) continue;
+            const activeSessionSteamIds = new Set(activeSessions.map(s => s.steam_id));
 
-            const onlinePlayerIds = new Set(
-                rustplus.team.players
-                    .filter(p => p.isOnline)
-                    .map(p => p.steamId)
-            );
+            const onlinePlayers = rustplus.team.players.filter(p => p.isOnline);
+            const onlinePlayerIds = new Set(onlinePlayers.map(p => p.steamId));
 
+            // Close orphaned sessions (player not in team or not online)
             activeSessions.forEach(session => {
-                // Close orphaned sessions (player not in team or not online)
                 if (!onlinePlayerIds.has(session.steam_id)) {
                     const sessionAge = Math.floor(Date.now() / 1000) - session.session_start;
                     // Only close if session has been active for more than 5 minutes
@@ -310,6 +307,15 @@ class StatisticsTracker {
                             `Statistics: periodic validation closed orphaned session for ${session.steam_id} (age: ${Math.floor(sessionAge / 60)}m)`);
                         this.db.endPlayerSession(guildId, session.steam_id);
                     }
+                }
+            });
+
+            // Start sessions for online players who don't have one
+            onlinePlayers.forEach(player => {
+                if (!activeSessionSteamIds.has(player.steamId)) {
+                    this.client.log(this.client.intlGet(null, 'infoCap'), 
+                        `Statistics: periodic validation started missing session for ${player.name} (${player.steamId})`);
+                    this.db.startPlayerSession(guildId, rustplus.serverId, player.steamId, player.name);
                 }
             });
         }
