@@ -43,8 +43,11 @@ class WebServer {
         this.cachedServerData = {};
         this.lastCacheUpdate = {};
 
-        // Initialize statistics tracker
-        this.statisticsTracker = new StatisticsTracker(client);
+        // Initialize statistics tracker (shared with client)
+        if (!this.client.statisticsTracker) {
+            this.client.statisticsTracker = new StatisticsTracker(client);
+        }
+        this.statisticsTracker = this.client.statisticsTracker;
 
         this.setupMiddleware();
         this.setupRoutes();

@@ -75,6 +75,7 @@ class DiscordBot extends Discord.Client {
 
         /* Web UI Server */
         this.webServer = null;
+        this.statisticsTracker = null;
 
         this.loadDiscordCommands();
         this.loadDiscordEvents();

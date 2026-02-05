@@ -896,7 +896,27 @@ class StatisticsDatabase {
         };
     }
 
+    backupDatabase(reason = 'manual') {
+        const dbPath = this.db.name;
+        const dbDir = Path.dirname(dbPath);
+        const backupDir = Path.join(dbDir, 'backups');
+
+        if (!Fs.existsSync(backupDir)) {
+            Fs.mkdirSync(backupDir, { recursive: true });
+        }
+
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const safeReason = String(reason).replace(/[^a-zA-Z0-9_-]/g, '_');
+        const backupPath = Path.join(backupDir, `statistics.${safeReason}.${timestamp}.db`);
+
+        Fs.copyFileSync(dbPath, backupPath);
+        console.log(`[Statistics] Database backup created: ${backupPath}`);
+
+        return backupPath;
+    }
+
     resetGuildStats(guildId) {
+        this.backupDatabase(`guild_reset_${guildId}`);
         // Delete all statistics for a specific guild (for server wipes)
         const tables = [
             'player_sessions',
