@@ -79,6 +79,24 @@ module.exports = {
                 label: Client.client.intlGet(guildId, 'customTimerEditCrateOilRigUnlockLabel'),
                 value: `${server.oilRigLockedCrateUnlockTimeMs / 1000}`,
                 style: Discord.TextInputStyle.Short
+            })),
+            new Discord.ActionRowBuilder().addComponents(TextInput.getTextInput({
+                customId: 'DeepSeaWipeCooldownTime',
+                label: Client.client.intlGet(guildId, 'customTimerEditDeepSeaWipeCooldownLabel'),
+                value: `${server.deepSeaWipeCooldownMs / 1000}`,
+                style: Discord.TextInputStyle.Short
+            })),
+            new Discord.ActionRowBuilder().addComponents(TextInput.getTextInput({
+                customId: 'DeepSeaWipeDurationTime',
+                label: Client.client.intlGet(guildId, 'customTimerEditDeepSeaWipeDurationLabel'),
+                value: `${server.deepSeaWipeDurationMs / 1000}`,
+                style: Discord.TextInputStyle.Short
+            })),
+            new Discord.ActionRowBuilder().addComponents(TextInput.getTextInput({
+                customId: 'DeepSeaEgressTime',
+                label: Client.client.intlGet(guildId, 'customTimerEditDeepSeaEgressTimeLabel'),
+                value: `${server.deepSeaEgressTimeMs / 1000}`,
+                style: Discord.TextInputStyle.Short
             }))
         );
 

@@ -48,6 +48,9 @@ module.exports = async (client, interaction) => {
         const server = instance.serverList[ids.serverId];
         const cargoShipEgressTime = parseInt(interaction.fields.getTextInputValue('CargoShipEgressTime'));
         const oilRigCrateUnlockTime = parseInt(interaction.fields.getTextInputValue('OilRigCrateUnlockTime'));
+        const deepSeaWipeCooldown = parseInt(interaction.fields.getTextInputValue('DeepSeaWipeCooldownTime'));
+        const deepSeaWipeDuration = parseInt(interaction.fields.getTextInputValue('DeepSeaWipeDurationTime'));
+        const deepSeaEgressTime = parseInt(interaction.fields.getTextInputValue('DeepSeaEgressTime'));
 
         if (!server) {
             interaction.deferUpdate();
@@ -60,11 +63,20 @@ module.exports = async (client, interaction) => {
         if (oilRigCrateUnlockTime && ((oilRigCrateUnlockTime * 1000) !== server.oilRigLockedCrateUnlockTimeMs)) {
             server.oilRigLockedCrateUnlockTimeMs = oilRigCrateUnlockTime * 1000;
         }
+        if (deepSeaWipeCooldown && ((deepSeaWipeCooldown * 1000) !== server.deepSeaWipeCooldownMs)) {
+            server.deepSeaWipeCooldownMs = deepSeaWipeCooldown * 1000;
+        }
+        if (deepSeaWipeDuration && ((deepSeaWipeDuration * 1000) !== server.deepSeaWipeDurationMs)) {
+            server.deepSeaWipeDurationMs = deepSeaWipeDuration * 1000;
+        }
+        if (deepSeaEgressTime && ((deepSeaEgressTime * 1000) !== server.deepSeaEgressTimeMs)) {
+            server.deepSeaEgressTimeMs = deepSeaEgressTime * 1000;
+        }
         client.setInstance(guildId, instance);
 
         client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'modalValueChange', {
             id: `${verifyId}`,
-            value: `${server.cargoShipEgressTimeMs}, ${server.oilRigLockedCrateUnlockTimeMs}`
+            value: `${server.cargoShipEgressTimeMs}, ${server.oilRigLockedCrateUnlockTimeMs}, ${server.deepSeaWipeCooldownMs}, ${server.deepSeaWipeDurationMs}, ${server.deepSeaEgressTimeMs}`
         }));
     }
     else if (interaction.customId.startsWith('ServerEdit')) {

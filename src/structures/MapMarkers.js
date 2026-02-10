@@ -55,6 +55,7 @@ class MapMarkers {
         this.crateSmallOilRigLocation = null;
         this.crateLargeOilRigTimer = null;
         this.crateLargeOilRigLocation = null;
+        this.deepSeaTimer = null;
 
         /* Event dates */
         this.timeSinceCargoShipWasOut = null;
@@ -64,12 +65,16 @@ class MapMarkers {
         this.timeSincePatrolHelicopterWasOnMap = null;
         this.timeSincePatrolHelicopterWasDestroyed = null;
         this.timeSinceTravelingVendorWasOnMap = null;
+        this.timeSinceDeepSeaWasOnMap = null;
 
         /* Event location */
         this.patrolHelicopterDestroyedLocation = null;
 
         /* Vending Machine variables */
         this.knownVendingMachines = [];
+
+        /* DeepSea. */
+        this.isDeepSeaActive = false;
 
         this.updateMapMarkers(mapMarkers);
     }
@@ -97,6 +102,10 @@ class MapMarkers {
     set patrolHelicopters(patrolHelicopters) { this._patrolHelicopters = patrolHelicopters; }
     get travelingVendors() { return this._travelingVendors; }
     set travelingVendors(travelingVendors) { this._travelingVendors = travelingVendors; }
+
+    writelogfile(type, data) {
+        Helper.createJsonFile(type, data);
+    }
 
     getType(type) {
         if (!Object.values(this.types).includes(type)) {
@@ -232,7 +241,7 @@ class MapMarkers {
 
         for (let marker of this.getMarkersOfType(type, markers)) {
             if (this.isMarkerPresentByTypeXY(type, marker.x, marker.y)) {
-                leftMarkersOfType = leftMarkersOfType.filter(e => e.x !== marker.x) || e.y !== marker.y;
+                leftMarkersOfType = leftMarkersOfType.filter(e => e.x !== marker.x || e.y !== marker.y);
             }
         }
 
@@ -310,7 +319,7 @@ class MapMarkers {
 
             marker.location = pos;
 
-            if (!this.rustplus.isFirstPoll) {
+            if (!this.rustplus.isFirstPoll && !Map.isOutsideGridSystem(marker.x, marker.y, mapSize, 4 * Map.gridDiameter)) {
                 if (!this.knownVendingMachines.some(e => e.x === marker.x && e.y === marker.y)) {
                     this.rustplus.sendEvent(
                         this.rustplus.notificationSettings.vendingMachineDetectedSetting,
@@ -320,13 +329,35 @@ class MapMarkers {
                 }
             }
 
+            if (Map.isOutsideGridSystem(marker.x, marker.y, mapSize, 4 * Map.gridDiameter)) {
+                if (!this.isDeepSeaActive) {
+                    this.rustplus.sendEvent(
+                        this.rustplus.notificationSettings.deepSeaDetectedSetting,
+                        this.client.intlGet(this.rustplus.guildId, 'deepSeaDetected', 
+                        { location: pos.string.replace(/\s+of\s+grid\s+[a-z0-9]+$/i, '').trim() }),
+                        null,
+                        Constants.COLOR_DEEP_SEA_DETECTED);
+                    this.isDeepSeaActive = true;
+                }
+            }
+
             this.knownVendingMachines.push({ x: marker.x, y: marker.y });
             this.vendingMachines.push(marker);
         }
 
         /* VendingMachine markers that have left. */
         for (let marker of leftMarkers) {
-            this.vendingMachines = this.vendingMachines.filter(e => e.x !== marker.x) || e.y !== marker.y;
+            let mapSize = this.rustplus.info.correctedMapSize;
+            this.vendingMachines = this.vendingMachines.filter(e => e.x !== marker.x || e.y !== marker.y);
+            if (Map.isOutsideGridSystem(marker.x, marker.y, mapSize, 4 * Map.gridDiameter) && this.isDeepSeaActive) {
+                this.rustplus.sendEvent(
+                    this.rustplus.notificationSettings.deepSeaLeftMapSetting,
+                    this.client.intlGet(this.rustplus.guildId, 'deepSeaLeftMap'),
+                    null,
+                    Constants.COLOR_DEEP_SEA_LEFT_MAP);
+                this.isDeepSeaActive = false;
+                this.timeSinceDeepSeaWasOnMap = new Date();
+            }
         }
 
         /* VendingMachine markers that still remains. */
