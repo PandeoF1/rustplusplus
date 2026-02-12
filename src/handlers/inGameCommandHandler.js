@@ -214,6 +214,10 @@ module.exports = {
             commandLowerCase === `${prefix}${client.intlGet(guildId, 'commandSyntaxTravelingVendor')}`) {
             rustplus.sendInGameMessage(rustplus.getCommandTravelingVendor());
         }
+        else if (commandLowerCase === `${prefix}${client.intlGet('en', 'commandSyntaxDeepSea')}` ||
+            commandLowerCase === `${prefix}${client.intlGet(guildId, 'commandSyntaxDeepSea')}`) {
+            rustplus.sendInGameMessage(rustplus.getCommandDeepSea());
+        }
         else {
             /* Maybe a custom command? */
 
