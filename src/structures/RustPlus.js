@@ -99,7 +99,9 @@ class RustPlus extends RustPlusLib {
             heli: [],
             small: [],
             large: [],
-            chinook: []
+            chinook: [],
+            travelingVendor: [],
+            deepSea: []
         };
         this.patrolHelicopterTracers = new Object();
         this.cargoShipTracers = new Object();
@@ -219,12 +221,12 @@ class RustPlus extends RustPlusLib {
     }
 
     updateEvents(event, message) {
-        const commandCargoEn = `${Client.client.intlGet('en', 'commandSyntaxCargo')}`;
-        const commandHeliEn = `${Client.client.intlGet('en', 'commandSyntaxHeli')}`;
-        const commandSmallEn = `${Client.client.intlGet('en', 'commandSyntaxSmall')}`;
-        const commandLargeEn = `${Client.client.intlGet('en', 'commandSyntaxLarge')}`;
-        const commandChinookEn = `${Client.client.intlGet('en', 'commandSyntaxChinook')}`;
-        if (![commandCargoEn, commandHeliEn, commandSmallEn, commandLargeEn, commandChinookEn].includes(event)) return;
+        const eventAliases = {
+            vendor: 'travelingVendor'
+        };
+        const eventKey = eventAliases[event] || event;
+        const supportedEvents = ['cargo', 'heli', 'small', 'large', 'chinook', 'travelingVendor', 'deepSea'];
+        if (!supportedEvents.includes(eventKey)) return;
 
         const str = `${Timer.getCurrentDateTime()} - ${message}`;
 
@@ -233,10 +235,10 @@ class RustPlus extends RustPlusLib {
         }
         this.events['all'].unshift(str);
 
-        if (this.events[event].length === 10) {
-            this.events[event].pop();
+        if (this.events[eventKey].length === 10) {
+            this.events[eventKey].pop();
         }
-        this.events[event].unshift(str);
+        this.events[eventKey].unshift(str);
     }
 
     updateBotMessages(message) {
@@ -1312,9 +1314,14 @@ class RustPlus extends RustPlusLib {
         const commandLargeEn = `${Client.client.intlGet('en', 'commandSyntaxLarge')}`;
         const commandChinook = `${Client.client.intlGet(this.guildId, 'commandSyntaxChinook')}`;
         const commandChinookEn = `${Client.client.intlGet('en', 'commandSyntaxChinook')}`;
+        const commandTravelingVendor = `${Client.client.intlGet(this.guildId, 'commandSyntaxTravelingVendor')}`;
+        const commandTravelingVendorEn = `${Client.client.intlGet('en', 'commandSyntaxTravelingVendor')}`;
+        const commandDeepSea = `${Client.client.intlGet(this.guildId, 'commandSyntaxDeepSea')}`;
+        const commandDeepSeaEn = `${Client.client.intlGet('en', 'commandSyntaxDeepSea')}`;
 
         const EVENTS = [commandCargo, commandCargoEn, commandHeli, commandHeliEn, commandSmall,
-            commandSmallEn, commandLarge, commandLargeEn, commandChinook, commandChinookEn];
+            commandSmallEn, commandLarge, commandLargeEn, commandChinook, commandChinookEn, 
+            commandTravelingVendor, commandTravelingVendorEn, commandDeepSea, commandDeepSeaEn];
 
         if (command.toLowerCase().startsWith(`${commandEvents}`)) {
             command = command.slice(`${commandEvents}`.length).trim();
@@ -1377,6 +1384,16 @@ class RustPlus extends RustPlusLib {
             case commandChinookEn:
             case commandChinook: {
                 event = 'chinook';
+            } break;
+
+            case commandTravelingVendorEn:
+            case commandTravelingVendor: {
+                event = 'travelingVendor';
+            } break;
+
+            case commandDeepSeaEn:
+            case commandDeepSea: {
+                event = 'deepSea';
             } break;
 
             default: {
@@ -2891,6 +2908,77 @@ class RustPlus extends RustPlusLib {
         }
 
         return strings;
+    }
+
+    getCommandDeepSea(isInfoChannel = false) {
+        const strings = [];
+        for (const deepSea of this.mapMarkers.deepSeas) {
+            if (isInfoChannel) {
+                return Client.client.intlGet(this.guildId, 'atLocation', {
+                    location: deepSea.location.string.replace(/\s+of\s+grid\s+[a-z0-9]+$/i, '').trim()
+                });
+            }
+            else {
+                strings.push(Client.client.intlGet(this.guildId, 'deepSeaLocatedAtShort', {
+                    location: deepSea.location.string
+                }));
+            }
+        }
+
+
+        if (strings.length === 0) {
+            const wasOnMap = this.mapMarkers.timeSinceDeepSeaWasOnMap;
+
+            if (wasOnMap === null) {
+                return isInfoChannel ? Client.client.intlGet(this.guildId, 'notActive') :
+                    Client.client.intlGet(this.guildId, 'deepSeaNotCurrentlyOnMap');
+            }
+            else if (wasOnMap !== null) {
+                const secondsSince = (new Date() - wasOnMap) / 1000;
+                if (isInfoChannel) {
+                    const timeSince = Timer.secondsToFullScale(secondsSince, 's');
+                    return Client.client.intlGet(this.guildId, 'timeSinceLast', {
+                        time: timeSince
+                    });
+                }
+                else {
+                    const instance = Client.client.getInstance(this.guildId);
+                    const deepSeaWipeCooldown = instance.serverList[this.serverId].deepSeaWipeCooldownMs;
+                    const respawnSeconds = Math.max(0, (deepSeaWipeCooldown - (new Date() - wasOnMap)) / 1000);
+                    const respawnTime = Timer.secondsToFullScale(respawnSeconds, 's');
+                    const timeSince = Timer.secondsToFullScale(secondsSince);
+                    return Client.client.intlGet(this.guildId, 'timeSinceDeepSeaWasOnMap', {
+                        time: timeSince,
+                        respawn: respawnTime
+                    });
+                }
+            }
+        }
+
+        if (strings.length !== 0) {
+            const isOnMap = this.mapMarkers.timeSinceDeepSeaSpawned;
+
+            if (isOnMap !== null) {
+                const instance = Client.client.getInstance(this.guildId);
+                const deepSeaWipeDuration = instance.serverList[this.serverId].deepSeaWipeDurationMs;
+                const secondsleft = Math.max(0, (deepSeaWipeDuration - (new Date() - isOnMap)) / 1000);
+                if (isInfoChannel) {
+                    const timeSince = Timer.secondsToFullScale(secondsleft, 's');
+                    return Client.client.intlGet(this.guildId, 'activeFor', {
+                        time: timeSince
+                    });
+                }
+                else {
+                    const timeSince = Timer.secondsToFullScale(secondsleft);
+                    return Client.client.intlGet(this.guildId, 'timeDeepSeaIsActiveFor', {
+                        time: timeSince,
+                        location: strings[0]
+                    });
+                }
+            }
+
+        return strings;
+        }
     }
 }
 
