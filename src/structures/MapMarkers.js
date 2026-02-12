@@ -48,6 +48,7 @@ class MapMarkers {
         this._genericRadiuses = [];
         this._patrolHelicopters = [];
         this._travelingVendors = [];
+        this._deepSeas = [];
 
         /* Timers */
         this.cargoShipEgressTimers = new Object();
@@ -65,6 +66,7 @@ class MapMarkers {
         this.timeSincePatrolHelicopterWasOnMap = null;
         this.timeSincePatrolHelicopterWasDestroyed = null;
         this.timeSinceTravelingVendorWasOnMap = null;
+        this.timeSinceDeepSeaSpawned = null;
         this.timeSinceDeepSeaWasOnMap = null;
 
         /* Event location */
@@ -102,10 +104,8 @@ class MapMarkers {
     set patrolHelicopters(patrolHelicopters) { this._patrolHelicopters = patrolHelicopters; }
     get travelingVendors() { return this._travelingVendors; }
     set travelingVendors(travelingVendors) { this._travelingVendors = travelingVendors; }
-
-    writelogfile(type, data) {
-        Helper.createJsonFile(type, data);
-    }
+    get deepSeas() { return this._deepSeas; }
+    set deepSeas(deepSeas) { this._deepSeas = deepSeas; }
 
     getType(type) {
         if (!Object.values(this.types).includes(type)) {
@@ -335,9 +335,12 @@ class MapMarkers {
                         this.rustplus.notificationSettings.deepSeaDetectedSetting,
                         this.client.intlGet(this.rustplus.guildId, 'deepSeaDetected', 
                         { location: pos.string.replace(/\s+of\s+grid\s+[a-z0-9]+$/i, '').trim() }),
-                        null,
+                        'deepSea',
                         Constants.COLOR_DEEP_SEA_DETECTED);
+                    this.deepSeas.push(marker);
                     this.isDeepSeaActive = true;
+                    this.timeSinceDeepSeaSpawned = new Date();
+                    this.timeSinceDeepSeaWasOnMap = null;
                 }
             }
 
@@ -349,14 +352,18 @@ class MapMarkers {
         for (let marker of leftMarkers) {
             let mapSize = this.rustplus.info.correctedMapSize;
             this.vendingMachines = this.vendingMachines.filter(e => e.x !== marker.x || e.y !== marker.y);
-            if (Map.isOutsideGridSystem(marker.x, marker.y, mapSize, 4 * Map.gridDiameter) && this.isDeepSeaActive) {
+            if (this.deepSeas.some(e => e.id === marker.id) && 
+            Map.isOutsideGridSystem(marker.x, marker.y, mapSize, 4 * Map.gridDiameter) && 
+            this.isDeepSeaActive) {
                 this.rustplus.sendEvent(
                     this.rustplus.notificationSettings.deepSeaLeftMapSetting,
                     this.client.intlGet(this.rustplus.guildId, 'deepSeaLeftMap'),
-                    null,
+                    'deepSea',
                     Constants.COLOR_DEEP_SEA_LEFT_MAP);
                 this.isDeepSeaActive = false;
                 this.timeSinceDeepSeaWasOnMap = new Date();
+                this.timeSinceDeepSeaSpawned = null;
+                this.deepSeas = this.deepSeas.filter(e => e.id !== marker.id);
             }
         }
 
@@ -759,7 +766,7 @@ class MapMarkers {
             this.rustplus.sendEvent(
                 this.rustplus.notificationSettings.travelingVendorDetectedSetting,
                 this.client.intlGet(this.rustplus.guildId, 'travelingVendorSpawnedAt', { location: pos.string }),
-                'vendor',
+                'travelingVendor',
                 Constants.COLOR_TRAVELING_VENDOR_LOCATED_AT);
 
             this.travelingVendors.push(marker);
@@ -770,7 +777,7 @@ class MapMarkers {
             this.rustplus.sendEvent(
                 this.rustplus.notificationSettings.travelingVendorLeftSetting,
                 this.client.intlGet(this.rustplus.guildId, 'travelingVendorLeftMap', { location: marker.location.string }),
-                'vendor',
+                'travelingVendor',
                 Constants.COLOR_TRAVELING_VENDOR_LEFT_MAP);
 
             this.timeSinceTravelingVendorWasOnMap = new Date();
@@ -791,7 +798,7 @@ class MapMarkers {
                     this.rustplus.sendEvent(
                         this.rustplus.notificationSettings.travelingVendorHaltedSetting,
                         this.client.intlGet(this.rustplus.guildId, 'travelingVendorHaltedAt', { location: pos.string }),
-                        'vendor',
+                        'travelingVendor',
                         Constants.COLOR_TRAVELING_VENDOR_HALTED);
                 }
             }
@@ -802,7 +809,7 @@ class MapMarkers {
                     this.rustplus.sendEvent(
                         this.rustplus.notificationSettings.travelingVendorHaltedSetting,
                         this.client.intlGet(this.rustplus.guildId, 'travelingVendorResumedAt', { location: pos.string }),
-                        'vendor',
+                        'travelingVendor',
                         Constants.COLOR_TRAVELING_VENDOR_MOVING);
                 }
             }
@@ -896,6 +903,7 @@ class MapMarkers {
         this.genericRadiuses = [];
         this.patrolHelicopters = [];
         this.travelingVendors = [];
+        this.deepSeas = [];
 
         for (const [id, timer] of Object.entries(this.cargoShipEgressTimers)) {
             timer.stop();
@@ -917,6 +925,8 @@ class MapMarkers {
         this.timeSincePatrolHelicopterWasOnMap = null;
         this.timeSincePatrolHelicopterWasDestroyed = null;
         this.timeSinceTravelingVendorWasOnMap = null;
+        this.timeSinceDeepSeaSpawned = null;
+        this.timeSinceDeepSeaWasOnMap = null;
 
         this.patrolHelicopterDestroyedLocation = null;
 
@@ -926,6 +936,8 @@ class MapMarkers {
 
         this.crateSmallOilRigLocation = null;
         this.crateLargeOilRigLocation = null;
+
+        this.isDeepSeaActive = false;
     }
 }
 
