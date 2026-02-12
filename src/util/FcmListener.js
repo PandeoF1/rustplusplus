@@ -258,7 +258,6 @@ async function pairingServer(client, guild, title, message, body) {
             Constants.DEFAULT_OIL_RIG_LOCKED_CRATE_UNLOCK_TIME_MS,
         deepSeaWipeCooldownMs: server ? server.deepSeaWipeCooldownMs : Constants.DEFAULT_DEEP_SEA_WIPE_COOLDOWN_MS,
         deepSeaWipeDurationMs: server ? server.deepSeaWipeDurationMs : Constants.DEFAULT_DEEP_SEA_WIPE_DURATION_MS,
-        deepSeaEgressTimeMs: server ? server.deepSeaEgressTimeMs : Constants.DEFAULT_DEEP_SEA_EGRESS_TIME_MS,
         timeTillDay: server ? server.timeTillDay : null,
         timeTillNight: server ? server.timeTillNight : null
     };

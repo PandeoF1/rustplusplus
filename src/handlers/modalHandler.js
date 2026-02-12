@@ -50,7 +50,6 @@ module.exports = async (client, interaction) => {
         const oilRigCrateUnlockTime = parseInt(interaction.fields.getTextInputValue('OilRigCrateUnlockTime'));
         const deepSeaWipeCooldown = parseInt(interaction.fields.getTextInputValue('DeepSeaWipeCooldownTime'));
         const deepSeaWipeDuration = parseInt(interaction.fields.getTextInputValue('DeepSeaWipeDurationTime'));
-        const deepSeaEgressTime = parseInt(interaction.fields.getTextInputValue('DeepSeaEgressTime'));
 
         if (!server) {
             interaction.deferUpdate();
@@ -69,14 +68,11 @@ module.exports = async (client, interaction) => {
         if (deepSeaWipeDuration && ((deepSeaWipeDuration * 1000) !== server.deepSeaWipeDurationMs)) {
             server.deepSeaWipeDurationMs = deepSeaWipeDuration * 1000;
         }
-        if (deepSeaEgressTime && ((deepSeaEgressTime * 1000) !== server.deepSeaEgressTimeMs)) {
-            server.deepSeaEgressTimeMs = deepSeaEgressTime * 1000;
-        }
         client.setInstance(guildId, instance);
 
         client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'modalValueChange', {
             id: `${verifyId}`,
-            value: `${server.cargoShipEgressTimeMs}, ${server.oilRigLockedCrateUnlockTimeMs}, ${server.deepSeaWipeCooldownMs}, ${server.deepSeaWipeDurationMs}, ${server.deepSeaEgressTimeMs}`
+            value: `${server.cargoShipEgressTimeMs}, ${server.oilRigLockedCrateUnlockTimeMs}, ${server.deepSeaWipeCooldownMs}, ${server.deepSeaWipeDurationMs}`
         }));
     }
     else if (interaction.customId.startsWith('ServerEdit')) {

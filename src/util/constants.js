@@ -58,7 +58,6 @@ module.exports = {
     DEFAULT_OIL_RIG_LOCKED_CRATE_UNLOCK_TIME_MS: 15 * 60 * 1000, /* 15 min */
     DEFAULT_DEEP_SEA_WIPE_COOLDOWN_MS: 60 * 60 * 1000, /* 1 hour */
     DEFAULT_DEEP_SEA_WIPE_DURATION_MS: 180 * 60 * 1000, /* 3 hours */
-    DEFAULT_DEEP_SEA_EGRESS_TIME_MS: 5 * 60 * 1000, /* 5 min */
 
     /* Other constants */
     PATROL_HELI_DOWNED_RADIUS: 400,
