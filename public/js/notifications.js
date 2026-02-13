@@ -377,10 +377,14 @@ class NotificationManager {
             markAllBtn.style.display = unreadCount > 0 ? 'block' : 'none';
         }
 
+        const languageManager = window.rustplusUI?.languageManager;
+        const getText = (key, fallback) => (languageManager ? languageManager.get(key) : fallback) || fallback;
+        const keepCount = 5;
+
         if (this.notifications.length === 0) {
             const empty = document.createElement('li');
             empty.className = 'notification-empty';
-            empty.textContent = window.rustplusUI?.languageManager?.get('notifications.empty') || 'No new notifications';
+            empty.textContent = getText('notifications.empty', 'No new notifications');
             this.list.appendChild(empty);
             // NO hacer return aquí - continuar para mostrar el botón
         } else {
@@ -401,7 +405,7 @@ class NotificationManager {
                     <p class="notif-message">${notif.message}</p>
                     <span class="notif-time">${timeStr}</span>
                 </div>
-                <button class="notif-delete-btn" title="Borrar">
+                <button class="notif-delete-btn" title="${getText('notifications.deleteTitle', 'Delete')}">
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="3 6 5 6 21 6"></polyline>
                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -443,11 +447,14 @@ class NotificationManager {
 
         if (this.notifications.length > 0) {
             // Modo Resetear/Borrar
-            actionBtn.textContent = this.notifications.length > 5 ? 'Resetear (Mantener 5)' : 'Borrar Todas';
+            actionBtn.textContent = this.notifications.length > keepCount ?
+                getText('notifications.action.resetKeep', 'Reset (Keep {n})').replace('{n}', keepCount) :
+                getText('notifications.action.clearAll', 'Clear All');
             actionBtn.addEventListener('click', () => this.resetNotifications());
         } else {
             // Modo Restaurar (cuando está vacío)
-            actionBtn.textContent = 'Restaurar Recientes (5)';
+            actionBtn.textContent = getText('notifications.action.restoreRecent', 'Restore Recent ({n})')
+                .replace('{n}', keepCount);
             actionBtn.addEventListener('click', () => this.restoreRecentNotifications());
         }
 
@@ -460,7 +467,9 @@ class NotificationManager {
         const events = window.rustplusUI?.serverData?.events?.all || [];
 
         if (events.length === 0) {
-            alert('No hay eventos recientes en el servidor para restaurar.');
+            const noEventsMsg = window.rustplusUI?.languageManager?.get('notifications.restore.noEvents') ||
+                'No recent events on the server to restore.';
+            alert(noEventsMsg);
             return;
         }
 
@@ -497,7 +506,9 @@ class NotificationManager {
             this.updateBadge();
             this.renderList();
         } else {
-            alert('No se encontraron nuevos eventos para restaurar.');
+            const noneNewMsg = window.rustplusUI?.languageManager?.get('notifications.restore.noneNew') ||
+                'No new events to restore.';
+            alert(noneNewMsg);
         }
     }
 
@@ -507,10 +518,16 @@ class NotificationManager {
         const keepCount = 5;
         let message = '';
 
+        const confirmAll = window.rustplusUI?.languageManager?.get('notifications.reset.confirmAll') ||
+            'Are you sure you want to delete ALL notifications?';
+        const confirmKeep = (window.rustplusUI?.languageManager?.get('notifications.reset.confirmKeep') ||
+            'Are you sure you want to clear history and keep only the {n} most recent?')
+            .replace('{n}', keepCount);
+
         if (this.notifications.length <= keepCount) {
-            message = '¿Seguro que quieres borrar TODAS las notificaciones?';
+            message = confirmAll;
         } else {
-            message = `¿Seguro que quieres borrar el historial y mantener solo las ${keepCount} más recientes?`;
+            message = confirmKeep;
         }
 
         if (confirm(message)) {

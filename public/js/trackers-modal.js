@@ -282,7 +282,7 @@ class TrackersModalManager {
     async handleDelete(trackerId) {
         this.app.showConfirm(
             this.app.languageManager.get('switches.action.delete'),
-            `${this.app.languageManager.get('trackers.confirm.deleteMsg') || '¿Estás seguro de que quieres eliminar el tracker'} #${trackerId}?`,
+            `${this.app.languageManager.get('trackers.confirm.deleteMsg') || 'Are you sure you want to delete tracker'} #${trackerId}?`,
             async () => {
                 const guildId = this.app.currentGuildId;
                 try {
@@ -451,7 +451,7 @@ class TrackersModalManager {
                     <span class="manage-player-name">${p.name}</span>
                     <span class="manage-player-id">${p.steamId || p.playerId}</span>
                 </div>
-                <button class="btn-delete-player" onclick="trackersModal.executeRemovePlayer('${p.steamId || p.playerId}')" title="Quitar Jugador">
+                <button class="btn-delete-player" onclick="trackersModal.executeRemovePlayer('${p.steamId || p.playerId}')" title="${this.app.languageManager.get('trackers.action.removePlayerTitle')}">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M3 6h18"></path>
                         <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>

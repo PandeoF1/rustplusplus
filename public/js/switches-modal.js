@@ -22,15 +22,15 @@ class SwitchesModalManager {
 
         // Auto Config Options
         this.autoOptions = [
-            { value: 0, text: "APAGADO" },
-            { value: 1, text: "AUTO-DÍA" },
-            { value: 2, text: "AUTO-NOCHE" },
-            { value: 3, text: "AUTO-ENCENDIDO" },
-            { value: 4, text: "AUTO-APAGADO" },
-            { value: 5, text: "AUTO-ENCENDIDO-PROXIMIDAD" },
-            { value: 6, text: "AUTO-APAGADO-PROXIMIDAD" },
-            { value: 7, text: "AUTO-ON-CUALQUIERA-ONLINE" },
-            { value: 8, text: "AUTO-OFF-CUALQUIERA-ONLINE" }
+            { value: 0, key: 'switches.autoOption.off' },
+            { value: 1, key: 'switches.autoOption.autoDay' },
+            { value: 2, key: 'switches.autoOption.autoNight' },
+            { value: 3, key: 'switches.autoOption.autoOn' },
+            { value: 4, key: 'switches.autoOption.autoOff' },
+            { value: 5, key: 'switches.autoOption.autoOnProximity' },
+            { value: 6, key: 'switches.autoOption.autoOffProximity' },
+            { value: 7, key: 'switches.autoOption.autoOnAnyOnline' },
+            { value: 8, key: 'switches.autoOption.autoOffAnyOnline' }
         ];
 
         this.init();
@@ -91,7 +91,7 @@ class SwitchesModalManager {
             this.switchGroups = this.app.serverData.switchGroups || {};
             this.render();
         } else {
-            this.list.innerHTML = '<div class="loading-switches">Loading switches...</div>';
+            this.list.innerHTML = `<div class="loading-switches">${this.app.languageManager.get('switches.loading')}</div>`;
         }
     }
 
@@ -107,10 +107,10 @@ class SwitchesModalManager {
             this.list.innerHTML = `
                 <div class="no-switches">
                     <div style="font-size: 3rem; margin-bottom: 1rem;">🔌</div>
-                    <div>No smart switches found.</div>
+                    <div>${this.app.languageManager.get('switches.empty.title')}</div>
                     <div style="font-size: 0.8rem; color: #888; margin-top: 0.5rem;">
-                        Pair them with the Discord bot first.<br>
-                        (Unreachable switches are hidden)
+                        ${this.app.languageManager.get('switches.empty.hint')}<br>
+                        ${this.app.languageManager.get('switches.empty.note')}
                     </div>
                 </div>`;
             return;
@@ -135,9 +135,10 @@ class SwitchesModalManager {
         const cleanImageSrc = imageSrc.replace('attachment://', '/images/');
 
         const currentAuto = entity.autoDayNightOnOff !== undefined ? entity.autoDayNightOnOff : 0;
-        const optionsHtml = this.autoOptions.map(opt =>
-            `<option value="${opt.value}" ${currentAuto === opt.value ? 'selected' : ''}>${opt.text}</option>`
-        ).join('');
+        const optionsHtml = this.autoOptions.map(opt => {
+            const label = this.app.languageManager.get(opt.key);
+            return `<option value="${opt.value}" ${currentAuto === opt.value ? 'selected' : ''}>${label}</option>`;
+        }).join('');
 
         card.innerHTML = `
             <div class="switch-main-row">
@@ -157,7 +158,7 @@ class SwitchesModalManager {
                     </div>
                     ${!isGroup ? `
                     <div class="switch-location">
-                        ${entity.location || 'Unknown Grid'} • ${this.app.serverData?.serverName || this.app.languageManager.get('header.loading')}
+                        ${entity.location || this.app.languageManager.get('switches.unknownGrid')} • ${this.app.serverData?.serverName || this.app.languageManager.get('header.loading')}
                     </div>` : ''}
                 </div>
                 <div class="switch-img-col">
@@ -233,7 +234,7 @@ class SwitchesModalManager {
     }
 
     async handleDelete(entityId, isGroup) {
-        if (!confirm('¿Estás seguro de que quieres eliminar este interruptor?')) return;
+        if (!confirm(this.app.languageManager.get('switches.confirm.delete'))) return;
         const guildId = this.app.currentGuildId;
         try {
             await fetch(`/api/switch/${guildId}/${entityId}/delete`, { method: 'POST' });
@@ -270,7 +271,7 @@ class SwitchesModalManager {
         const newCommand = this.editCommandInput.value.trim();
 
         if (!newName || !newCommand) {
-            alert("Nombre y comando son obligatorios.");
+            alert(this.app.languageManager.get('switches.error.missingFields'));
             return;
         }
 
@@ -285,11 +286,11 @@ class SwitchesModalManager {
             if (response.ok) {
                 this.closeEditModal();
             } else {
-                alert('Error al guardar cambios.');
+                alert(this.app.languageManager.get('switches.error.save'));
             }
         } catch (e) {
             console.error('Save error:', e);
-            alert('Error al guardar cambios.');
+            alert(this.app.languageManager.get('switches.error.save'));
         }
     }
 }

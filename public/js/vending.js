@@ -66,7 +66,8 @@ class VendingManager {
             this.renderList();
         } else {
             // If data isn't ready or structured differently, show empty/loading state
-            const noDataMsg = window.rustplusUI?.languageManager?.get('vending.noItems') || 'No vending machines found or data not loaded.';
+            const noDataMsg = window.rustplusUI?.languageManager?.get('vending.noData') ||
+                'No vending machines found or data not loaded.';
             this.list.innerHTML = `<div class="vending-loading">${noDataMsg}</div>`;
         }
     }
@@ -102,7 +103,8 @@ class VendingManager {
             if (hideEmpty && items.length === 0) return;
 
             // Basic Search: Match Machine Name or Item Names
-            const matchesName = (vm.name || 'Vending Machine').toLowerCase().includes(searchTerm);
+            const defaultName = window.rustplusUI?.languageManager?.get('vending.machine') || 'Vending Machine';
+            const matchesName = (vm.name || defaultName).toLowerCase().includes(searchTerm);
             const matchesItems = items.some(item =>
                 (item.itemName || '').toLowerCase().includes(searchTerm)
             );
@@ -124,9 +126,9 @@ class VendingManager {
 
             let itemsHtml = '';
             if (items.length > 0) {
-                const productLabel = window.rustplusUI?.languageManager?.get('vending.product') || 'Producto';
-                const priceLabel = window.rustplusUI?.languageManager?.get('vending.price') || 'Precio';
-                const outOfStockLabel = window.rustplusUI?.languageManager?.get('vending.outOfStock') || '(Agotado)';
+                const productLabel = window.rustplusUI?.languageManager?.get('vending.product') || 'Product';
+                const priceLabel = window.rustplusUI?.languageManager?.get('vending.price') || 'Price';
+                const outOfStockLabel = window.rustplusUI?.languageManager?.get('vending.outOfStock') || '(Out of Stock)';
 
                 const stockLabel = window.rustplusUI?.languageManager?.get('vending.stock') || 'Stock';
 
@@ -150,11 +152,11 @@ class VendingManager {
                     `).join('')}
                 </div>`;
             } else {
-                const noItemsLabel = window.rustplusUI?.languageManager?.get('vending.noItems') || 'Sin productos en venta';
+                const noItemsLabel = window.rustplusUI?.languageManager?.get('vending.noItems') || 'No items for sale';
                 itemsHtml = `<div class="vm-items" style="color: #666; font-style: italic;">${noItemsLabel}</div>`;
             }
 
-            const shopLabel = window.rustplusUI?.languageManager?.get('vending.shop') || 'Tienda';
+            const shopLabel = window.rustplusUI?.languageManager?.get('vending.shop') || 'Shop';
             card.innerHTML = `
                 <div class="vm-name">
                     <span>${vm.name || shopLabel} <span style="color: var(--accent); font-size: 0.9em; margin-left: 6px;">[${grid}]</span></span>
