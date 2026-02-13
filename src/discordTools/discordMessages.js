@@ -368,20 +368,25 @@ module.exports = {
     sendTeamChatMessage: async function (guildId, message) {
         const instance = Client.client.getInstance(guildId);
 
+        const playerName = `${message.name ?? ''}`;
+        const playerMessage = `${message.message ?? ''}`;
+        const steamIdText = message.steamId !== undefined && message.steamId !== null ?
+            message.steamId.toString() : '';
+
         let color = Constants.COLOR_TEAMCHAT_DEFAULT;
-        if (instance.teamChatColors.hasOwnProperty(message.steamId)) {
-            color = instance.teamChatColors[message.steamId];
+        if (instance.teamChatColors.hasOwnProperty(steamIdText)) {
+            color = instance.teamChatColors[steamIdText];
         }
 
         const content = {
             embeds: [DiscordEmbeds.getEmbed({
                 color: color,
-                description: `**${message.name}**: ${message.message}`,
-                footer: { text: message.steamId }
+                description: `**${playerName}**: ${playerMessage}`,
+                footer: { text: steamIdText }
             })]
         }
 
-        if (message.message.includes('@everyone')) {
+        if (playerMessage.includes('@everyone')) {
             content.content = '@everyone';
         }
 
