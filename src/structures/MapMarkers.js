@@ -364,8 +364,6 @@ class MapMarkers {
                 this.timeSinceDeepSeaSpawned = null;
                 this.deepSeas = this.deepSeas.filter(e => e.id !== marker.id);
             }
-            console.log(this.deepSeas);
-            console.log(leftMarkers);
         }
 
         /* VendingMachine markers that still remains. */
