@@ -333,8 +333,7 @@ class MapMarkers {
                 if (!this.isDeepSeaActive) {
                     this.rustplus.sendEvent(
                         this.rustplus.notificationSettings.deepSeaDetectedSetting,
-                        this.client.intlGet(this.rustplus.guildId, 'deepSeaDetected', 
-                        { location: pos.string.replace(/\s+of\s+grid\s+[a-z0-9]+$/i, '').trim() }),
+                        this.client.intlGet(this.rustplus.guildId, 'deepSeaDetected'),
                         'deepSea',
                         Constants.COLOR_DEEP_SEA_DETECTED);
                     this.deepSeas.push(marker);
@@ -365,6 +364,8 @@ class MapMarkers {
                 this.timeSinceDeepSeaSpawned = null;
                 this.deepSeas = this.deepSeas.filter(e => e.id !== marker.id);
             }
+            console.log(this.deepSeas);
+            console.log(leftMarkers);
         }
 
         /* VendingMachine markers that still remains. */
