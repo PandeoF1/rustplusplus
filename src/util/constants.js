@@ -56,7 +56,7 @@ module.exports = {
     /* Default timer times */
     DEFAULT_CARGO_SHIP_EGRESS_TIME_MS: 50 * 60 * 1000, /* 50 min */
     DEFAULT_OIL_RIG_LOCKED_CRATE_UNLOCK_TIME_MS: 15 * 60 * 1000, /* 15 min */
-    DEFAULT_DEEP_SEA_WIPE_COOLDOWN_MS: 60 * 60 * 1000, /* 1 hour */
+    DEFAULT_DEEP_SEA_WIPE_COOLDOWN_MS: 90 * 60 * 1000, /* 1 hour */
     DEFAULT_DEEP_SEA_WIPE_DURATION_MS: 180 * 60 * 1000, /* 3 hours */
 
     /* Other constants */
