@@ -21,6 +21,16 @@ class RustPlusWebUI {
         // Player colors (persistent across sessions)
         this.playerColors = {};
 
+        // CCTV stream state
+        this.cctvState = {
+            cameras: [],
+            activeCameras: new Set(),
+            statusByCamera: {},
+            tileRefs: {},
+            currentServerId: null
+        };
+        this.cctvFrameTimeouts = {};
+
         // Initialize marker images
         this.markerImages = {
             shop: new Image(),
@@ -295,6 +305,7 @@ class RustPlusWebUI {
         this.setupMinimap();
         this.setupSocketConnection();
         this.setupEventListeners();
+        this.setupCctvUI();
         this.loadGuilds();
         this.startRenderLoop();
 
@@ -429,7 +440,14 @@ class RustPlusWebUI {
                 }
             }
         });
-        this.socket.on('disconnect', () => this.updateConnectionStatus(false));
+        this.socket.on('disconnect', () => {
+            this.updateConnectionStatus(false);
+            this.setCctvStatus('disconnected', this.getCctvText('cctv.status.disconnected', 'Disconnected'));
+            this.clearAllCctvFrames();
+            this.cctvState.activeCameras.clear();
+            this.renderCctvCameraList();
+            this.updateCctvIndicator();
+        });
 
         this.socket.on('guildsUpdate', () => {
             this.loadGuilds(true);
@@ -438,6 +456,16 @@ class RustPlusWebUI {
         this.socket.on('serverUpdate', (data) => {
             const firstUpdate = !this.serverData;
             this.serverData = data;
+
+            if (data?.serverId && data.serverId !== this.cctvState.currentServerId) {
+                this.cctvState.currentServerId = data.serverId;
+                this.cctvState.activeCameras.clear();
+                this.cctvState.statusByCamera = {};
+                this.clearAllCctvFrames();
+                this.loadCctvCameras();
+                this.renderCctvCameraList();
+                this.renderCctvGrid();
+            }
 
             // Update serverId in statistics manager and enable stats button once we have server data
             if (this.statisticsManager && data.serverId) {
@@ -587,6 +615,63 @@ class RustPlusWebUI {
             if (this.statisticsManager) {
                 this.statisticsManager.handleNewChatMessage(data);
             }
+        });
+
+        this.socket.on('cctv:status', (data) => {
+            if (!data || !data.cameraId) return;
+            const cameraId = data.cameraId;
+
+            if (data.state === 'streaming') {
+                this.cctvState.activeCameras.add(cameraId);
+                this.cctvState.statusByCamera[cameraId] = 'live';
+                this.setCctvStatus('streaming', this.getCctvText('cctv.status.streamCount', 'Streaming {n} camera(s)').replace('{n}', this.cctvState.activeCameras.size));
+            } else if (data.state === 'stopped') {
+                this.cctvState.activeCameras.delete(cameraId);
+                this.cctvState.statusByCamera[cameraId] = 'idle';
+                this.setCctvStatus('idle', data.reason ? this.getCctvText('cctv.status.stopReason', 'Stopped: {n}').replace('{n}', data.reason) : this.getCctvText('cctv.status.stopped', 'Stopped'));
+                this.clearCctvFrame(cameraId);
+            }
+
+            this.renderCctvCameraList();
+            this.updateCctvIndicator();
+            this.updateCctvTileStatus(cameraId);
+        });
+
+        this.socket.on('cctv:frame', (data) => {
+            if (!data || !data.frame || !data.cameraId) return;
+            this.renderCctvFrame(data.cameraId, data.frame);
+        });
+
+        this.socket.on('cctv:error', (data) => {
+            const message = data && data.message ? data.message : 'Camera error';
+            const cameraId = data && data.cameraId ? data.cameraId : null;
+
+            if (cameraId) {
+                this.cctvState.activeCameras.delete(cameraId);
+                this.cctvState.statusByCamera[cameraId] = 'error';
+                this.updateCctvTileStatus(cameraId);
+                this.clearCctvFrame(cameraId);
+            }
+
+            this.setCctvStatus('error', message);
+            this.renderCctvCameraList();
+            this.updateCctvIndicator();
+        });
+
+        this.socket.on('cctv:ended', (data) => {
+            const cameraId = data && data.cameraId ? data.cameraId : null;
+            const reason = data && data.reason ? data.reason : 'Stream ended';
+
+            if (cameraId) {
+                this.cctvState.activeCameras.delete(cameraId);
+                this.cctvState.statusByCamera[cameraId] = 'idle';
+                this.clearCctvFrame(cameraId);
+                this.updateCctvTileStatus(cameraId);
+            }
+
+            this.setCctvStatus('idle', reason === 'replaced' ? this.getCctvText('cctv.status.streamTaken', 'Camera taken over by another session') : reason);
+            this.renderCctvCameraList();
+            this.updateCctvIndicator();
         });
     }
 
@@ -778,11 +863,22 @@ class RustPlusWebUI {
     async selectServer(guildId) {
         if (this.currentGuildId) this.socket.emit('unsubscribe', this.currentGuildId);
         this.currentGuildId = guildId;
+        if (this.cctvState.activeCameras.size > 0) {
+            this.stopAllCctvStreams({ silent: true });
+        }
         if (!guildId) {
             this.serverData = null;
+            this.cctvState.currentServerId = null;
             // Disable statistics button
             const statsBtn = document.getElementById('statsButton');
             if (statsBtn) statsBtn.disabled = true;
+            this.cctvState.cameras = [];
+            this.cctvState.activeCameras.clear();
+            this.cctvState.statusByCamera = {};
+            this.clearAllCctvFrames();
+            this.renderCctvCameraList();
+            this.renderCctvGrid();
+            this.setCctvStatus('idle', this.getCctvText('cctv.status.selectServer', 'Select a server to use CCTV'));
             return;
         }
 
@@ -828,6 +924,14 @@ class RustPlusWebUI {
         // Load persistent patrol markers
         this.loadPersistentMarkers();
 
+        // Load CCTV cameras for this server
+        this.cctvState.activeCameras.clear();
+        this.cctvState.statusByCamera = {};
+        this.loadCctvCameras();
+        this.renderCctvCameraList();
+        this.renderCctvGrid();
+        this.setCctvStatus('idle', this.getCctvText('cctv.status.selectCameras', 'Select cameras to start streaming'));
+
         // Start cleanup interval if not already running
         if (!this.patrolMarkerCleanupInterval) {
             this.patrolMarkerCleanupInterval = setInterval(() => {
@@ -854,6 +958,387 @@ class RustPlusWebUI {
                 modal.classList.remove('open');
             }
         };
+    }
+
+    // ==================== CCTV ====================
+
+    setupCctvUI() {
+        const addBtn = document.getElementById('cctvAddBtn');
+        const stopBtn = document.getElementById('cctvStopBtn');
+        const startAllBtn = document.getElementById('cctvStartAllBtn');
+        const input = document.getElementById('cctvCameraInput');
+
+        if (addBtn) {
+            addBtn.addEventListener('click', () => this.addCctvCameraFromInput());
+        }
+
+        if (stopBtn) {
+            stopBtn.addEventListener('click', () => this.stopAllCctvStreams());
+        }
+
+        if (startAllBtn) {
+            startAllBtn.addEventListener('click', () => this.startAllCctvStreams());
+        }
+
+        if (input) {
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.addCctvCameraFromInput();
+                }
+            });
+        }
+
+        this.loadCctvCameras();
+        this.renderCctvCameraList();
+        this.renderCctvGrid();
+        this.loadCctvSuggestions();
+        this.setCctvStatus('idle', this.getCctvText('cctv.status.selectCameras', 'Select cameras to start streaming'));
+    }
+
+    getCctvStorageKey() {
+        if (!this.currentGuildId || !this.cctvState.currentServerId) return null;
+        return `rpp_cctv_cameras_${this.currentGuildId}_${this.cctvState.currentServerId}`;
+    }
+
+    getCctvText(key, fallback) {
+        return this.languageManager?.get(key) || fallback || key;
+    }
+
+    async loadCctvSuggestions() {
+        const list = document.getElementById('cctvCodeSuggestions');
+        if (!list) return;
+
+        try {
+            const response = await this.apiClient.get('/api/cctv-codes');
+            const codes = response?.codes || [];
+            list.innerHTML = '';
+            codes.forEach(code => {
+                const option = document.createElement('option');
+                option.value = code;
+                list.appendChild(option);
+            });
+        } catch (error) {
+            console.error('[WebUI] Failed to load CCTV codes', error);
+        }
+    }
+
+    loadCctvCameras() {
+        const storageKey = this.getCctvStorageKey();
+        if (!storageKey) {
+            this.cctvState.cameras = [];
+            return;
+        }
+
+        try {
+            const stored = localStorage.getItem(storageKey);
+            this.cctvState.cameras = stored ? JSON.parse(stored) : [];
+        } catch (error) {
+            console.error('[WebUI] Failed to load CCTV cameras', error);
+            this.cctvState.cameras = [];
+        }
+    }
+
+    saveCctvCameras() {
+        const storageKey = this.getCctvStorageKey();
+        if (!storageKey) return;
+        localStorage.setItem(storageKey, JSON.stringify(this.cctvState.cameras));
+    }
+
+    addCctvCameraFromInput() {
+        const input = document.getElementById('cctvCameraInput');
+        if (!input) return;
+
+        const cameraId = input.value.trim().toUpperCase();
+        if (!cameraId) {
+            this.setCctvStatus('error', this.getCctvText('cctv.status.enterCode', 'Enter a camera code'));
+            return;
+        }
+
+        if (!this.currentGuildId) {
+            this.setCctvStatus('error', this.getCctvText('cctv.status.selectServer', 'Select a server to use CCTV'));
+            return;
+        }
+
+        if (this.cctvState.cameras.includes(cameraId)) {
+            this.setCctvStatus('idle', this.getCctvText('cctv.status.alreadyAdded', '{n} already added').replace('{n}', cameraId));
+            input.value = '';
+            return;
+        }
+
+        this.cctvState.cameras.push(cameraId);
+        this.saveCctvCameras();
+        this.renderCctvCameraList();
+        this.renderCctvGrid();
+        this.setCctvStatus('idle', this.getCctvText('cctv.status.added', '{n} added').replace('{n}', cameraId));
+        input.value = '';
+    }
+
+    renderCctvCameraList() {
+        const list = document.getElementById('cctvCameraList');
+        if (!list) return;
+
+        list.innerHTML = '';
+
+        if (!this.cctvState.cameras.length) {
+            const empty = document.createElement('div');
+            empty.className = 'loading';
+            empty.textContent = this.getCctvText('cctv.list.empty', 'No cameras added yet.');
+            list.appendChild(empty);
+            return;
+        }
+
+        this.cctvState.cameras.forEach((cameraId) => {
+            const item = document.createElement('div');
+            const isActive = this.cctvState.activeCameras.has(cameraId);
+            item.className = `cctv-camera-item${isActive ? ' active' : ''}`;
+
+            const name = document.createElement('div');
+            name.className = 'cctv-camera-name';
+            name.textContent = cameraId;
+
+            const actions = document.createElement('div');
+            actions.className = 'cctv-camera-actions';
+
+            const viewBtn = document.createElement('button');
+            viewBtn.className = 'btn-save';
+            viewBtn.textContent = isActive ? this.getCctvText('cctv.action.stop', 'Stop') : this.getCctvText('cctv.action.view', 'View');
+            viewBtn.className = isActive ? 'btn-cancel' : 'btn-save';
+            viewBtn.addEventListener('click', () => {
+                if (isActive) {
+                    this.stopCctvStream(cameraId);
+                } else {
+                    this.startCctvStream(cameraId);
+                }
+            });
+
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'btn-cancel';
+            removeBtn.textContent = this.getCctvText('cctv.action.remove', 'Remove');
+            removeBtn.addEventListener('click', () => {
+                if (isActive) this.stopCctvStream(cameraId, { silent: true });
+                this.cctvState.cameras = this.cctvState.cameras.filter(id => id !== cameraId);
+                this.saveCctvCameras();
+                this.renderCctvCameraList();
+                this.renderCctvGrid();
+            });
+
+            actions.appendChild(viewBtn);
+            actions.appendChild(removeBtn);
+
+            item.appendChild(name);
+            item.appendChild(actions);
+            list.appendChild(item);
+        });
+    }
+
+    startCctvStream(cameraId) {
+        if (!this.currentGuildId) {
+            this.setCctvStatus('error', this.getCctvText('cctv.status.selectServer', 'Select a server to use CCTV'));
+            return;
+        }
+
+        if (!this.socket || !this.socket.connected) {
+            this.setCctvStatus('error', this.getCctvText('cctv.status.notConnected', 'Not connected to server'));
+            return;
+        }
+
+        this.clearCctvFrame(cameraId);
+        this.cctvState.statusByCamera[cameraId] = 'connecting';
+        this.updateCctvTileStatus(cameraId);
+        this.setCctvStatus('connecting', this.getCctvText('cctv.status.connectingTo', 'Connecting to {n}...').replace('{n}', cameraId));
+        this.socket.emit('cctv:subscribe', {
+            guildId: this.currentGuildId,
+            cameraId: cameraId
+        });
+    }
+
+    stopCctvStream(cameraId, { silent = false } = {}) {
+        if (!this.socket || !cameraId) return;
+        this.socket.emit('cctv:unsubscribe', { cameraId });
+        this.cctvState.activeCameras.delete(cameraId);
+        this.cctvState.statusByCamera[cameraId] = 'idle';
+        this.clearCctvFrame(cameraId);
+        this.renderCctvCameraList();
+        this.updateCctvIndicator();
+        this.updateCctvTileStatus(cameraId);
+        if (!silent) {
+            this.setCctvStatus('idle', this.getCctvText('cctv.status.stoppedCamera', 'Stopped {n}').replace('{n}', cameraId));
+        }
+    }
+
+    startAllCctvStreams() {
+        this.cctvState.cameras.forEach(cameraId => {
+            if (!this.cctvState.activeCameras.has(cameraId)) {
+                this.startCctvStream(cameraId);
+            }
+        });
+    }
+
+    stopAllCctvStreams({ silent = false } = {}) {
+        const active = Array.from(this.cctvState.activeCameras);
+        if (active.length === 0 && !silent) {
+            this.setCctvStatus('idle', this.getCctvText('cctv.status.noStreams', 'No active streams'));
+            return;
+        }
+        active.forEach(cameraId => this.stopCctvStream(cameraId, { silent: true }));
+        if (!silent) {
+            this.setCctvStatus('idle', this.getCctvText('cctv.status.allStopped', 'All streams stopped'));
+        }
+    }
+
+    renderCctvGrid() {
+        const grid = document.getElementById('cctvGrid');
+        if (!grid) return;
+
+        grid.innerHTML = '';
+        this.cctvState.tileRefs = {};
+
+        const activeCameras = Array.from(this.cctvState.activeCameras);
+        if (activeCameras.length === 0) {
+            grid.classList.add('empty');
+            const empty = document.createElement('div');
+            empty.textContent = this.getCctvText('cctv.status.noStreams', 'No active streams');
+            grid.appendChild(empty);
+            return;
+        }
+
+        grid.classList.remove('empty');
+
+        activeCameras.forEach(cameraId => {
+            const tile = document.createElement('div');
+            tile.className = 'cctv-tile';
+            tile.dataset.cameraId = cameraId;
+
+            const header = document.createElement('div');
+            header.className = 'cctv-tile-header';
+
+            const name = document.createElement('div');
+            name.textContent = cameraId;
+
+            const status = document.createElement('div');
+            status.className = 'cctv-tile-status';
+            status.textContent = this.getCctvStatusLabel(this.cctvState.statusByCamera[cameraId] || 'idle');
+
+            header.appendChild(name);
+            header.appendChild(status);
+
+            const body = document.createElement('div');
+            body.className = 'cctv-tile-body';
+
+            const img = document.createElement('img');
+            img.alt = `${cameraId} stream`;
+
+            const placeholder = document.createElement('div');
+            placeholder.className = 'cctv-tile-placeholder';
+            placeholder.textContent = this.getCctvText('cctv.tile.notStreaming', 'Not streaming');
+
+            body.appendChild(img);
+            body.appendChild(placeholder);
+
+            tile.appendChild(header);
+            tile.appendChild(body);
+
+            grid.appendChild(tile);
+
+            this.cctvState.tileRefs[cameraId] = {
+                status,
+                img,
+                placeholder
+            };
+        });
+    }
+
+    renderCctvFrame(cameraId, frameBase64) {
+        const tile = this.cctvState.tileRefs[cameraId];
+        if (!tile) return;
+
+        tile.img.src = `data:image/png;base64,${frameBase64}`;
+        tile.placeholder.style.display = 'none';
+
+        if (this.cctvFrameTimeouts[cameraId]) {
+            clearTimeout(this.cctvFrameTimeouts[cameraId]);
+        }
+        this.cctvFrameTimeouts[cameraId] = setTimeout(() => {
+            this.cctvState.statusByCamera[cameraId] = 'idle';
+            this.updateCctvTileStatus(cameraId);
+            tile.placeholder.style.display = 'flex';
+        }, 5000);
+    }
+
+    clearCctvFrame(cameraId) {
+        const tile = this.cctvState.tileRefs[cameraId];
+        if (!tile) return;
+
+        tile.img.src = '';
+        tile.placeholder.style.display = 'flex';
+
+        if (this.cctvFrameTimeouts[cameraId]) {
+            clearTimeout(this.cctvFrameTimeouts[cameraId]);
+            delete this.cctvFrameTimeouts[cameraId];
+        }
+    }
+
+    clearAllCctvFrames() {
+        Object.keys(this.cctvState.tileRefs).forEach(cameraId => this.clearCctvFrame(cameraId));
+    }
+
+    updateCctvTileStatus(cameraId) {
+        const tile = this.cctvState.tileRefs[cameraId];
+        if (!tile) return;
+        tile.status.textContent = this.getCctvStatusLabel(this.cctvState.statusByCamera[cameraId] || 'idle');
+    }
+
+    updateCctvIndicator() {
+        const indicator = document.getElementById('cctvIndicator');
+        if (!indicator) return;
+
+        if (this.cctvState.activeCameras.size === 0) {
+            indicator.className = 'cctv-indicator idle';
+            indicator.textContent = this.getCctvText('cctv.status.idle', 'Idle');
+            this.updateCctvLayout();
+            return;
+        }
+
+        indicator.className = 'cctv-indicator streaming';
+        indicator.textContent = this.getCctvText('cctv.status.streamCount', 'Streaming {n} camera(s)').replace('{n}', this.cctvState.activeCameras.size);
+        this.updateCctvLayout();
+    }
+
+    updateCctvLayout() {
+        const container = document.getElementById('main-cctv');
+        if (!container) return;
+        if (this.cctvState.activeCameras.size > 0) {
+            container.classList.add('has-streams');
+        } else {
+            container.classList.remove('has-streams');
+        }
+    }
+
+    getCctvStatusLabel(status) {
+        switch (status) {
+            case 'live':
+                return this.getCctvText('cctv.status.live', 'Live');
+            case 'connecting':
+                return this.getCctvText('cctv.status.connecting', 'Connecting');
+            case 'error':
+                return this.getCctvText('cctv.status.error', 'Error');
+            case 'disconnected':
+                return this.getCctvText('cctv.status.disconnected', 'Disconnected');
+            case 'idle':
+            default:
+                return this.getCctvText('cctv.status.idle', 'Idle');
+        }
+    }
+
+    setCctvStatus(state, message) {
+        const statusText = document.getElementById('cctvStatusText');
+
+        if (statusText) {
+            statusText.textContent = message;
+        }
+
+        this.updateCctvIndicator();
     }
 
     /**

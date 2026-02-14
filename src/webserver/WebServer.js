@@ -20,6 +20,7 @@
 
 const Express = require('express');
 const Http = require('http');
+const Fs = require('fs');
 const Path = require('path');
 const { Server } = require('socket.io');
 const Cors = require('cors');
@@ -42,6 +43,12 @@ class WebServer {
         // Cache server data to avoid rebuilding it multiple times
         this.cachedServerData = {};
         this.lastCacheUpdate = {};
+        this.cachedCctvCodes = null;
+
+        // CCTV streaming sessions (per socket and per guild)
+        this.cctvSessions = new Map();
+        this.cctvStreams = new Map();
+        this.cctvFrameMinIntervalMs = 150;
 
         // Initialize statistics tracker (shared with client)
         if (!this.client.statisticsTracker) {
@@ -85,6 +92,32 @@ class WebServer {
             }
 
             res.json(guilds);
+        });
+
+        /* Get CCTV codes for autocomplete */
+        this.app.get('/api/cctv-codes', (req, res) => {
+            try {
+                if (!this.cachedCctvCodes) {
+                    const raw = Fs.readFileSync(Path.join(__dirname, '..', 'staticFiles', 'cctv.json'), 'utf8');
+                    const parsed = JSON.parse(raw);
+                    const codes = [];
+
+                    Object.values(parsed).forEach(entry => {
+                        if (!entry || !Array.isArray(entry.codes)) return;
+                        entry.codes.forEach(code => {
+                            if (!code) return;
+                            const normalized = String(code).replace(/\\\*/g, '*');
+                            codes.push(normalized);
+                        });
+                    });
+
+                    this.cachedCctvCodes = Array.from(new Set(codes)).sort();
+                }
+
+                res.json({ codes: this.cachedCctvCodes });
+            } catch (error) {
+                res.status(500).json({ error: 'Failed to load CCTV codes' });
+            }
         });
 
         /* Get server data for a specific guild */
@@ -717,10 +750,194 @@ class WebServer {
                 this.client.log(this.client.intlGet(null, 'infoCap'), `WebUI: client ${socket.id} unsubscribed from guild ${guildId}`);
             });
 
+            socket.on('cctv:subscribe', async (payload) => {
+                const guildId = payload && payload.guildId ? payload.guildId : null;
+                const cameraId = payload && payload.cameraId ? payload.cameraId : null;
+                await this.startCctvSession(socket, guildId, cameraId);
+            });
+
+            socket.on('cctv:unsubscribe', async (payload) => {
+                const cameraId = payload && payload.cameraId ? payload.cameraId : null;
+                await this.stopCctvSessionBySocket(socket.id, cameraId, 'stopped');
+            });
+
             socket.on('disconnect', () => {
+                this.stopCctvSessionBySocket(socket.id, null, 'disconnected');
                 this.client.log(this.client.intlGet(null, 'infoCap'), `WebUI: client disconnected: ${socket.id}`);
             });
         });
+    }
+
+    async startCctvSession(socket, guildId, cameraId) {
+        if (!guildId || !cameraId) {
+            socket.emit('cctv:error', { message: 'Missing guild or camera id', cameraId: cameraId || null });
+            return;
+        }
+
+        const rustplus = this.client.rustplusInstances[guildId];
+        if (!rustplus || !rustplus.isOperational) {
+            socket.emit('cctv:error', { message: 'Server not available', cameraId: cameraId });
+            return;
+        }
+
+        const normalizedCameraId = String(cameraId).trim().toUpperCase();
+        if (!normalizedCameraId) {
+            socket.emit('cctv:error', { message: 'Invalid camera id', cameraId: cameraId });
+            return;
+        }
+
+        const existingSessions = this.cctvSessions.get(socket.id);
+        if (existingSessions && existingSessions.has(normalizedCameraId)) {
+            socket.emit('cctv:status', { state: 'streaming', cameraId: normalizedCameraId });
+            return;
+        }
+
+        await this.stopCctvSessionBySocket(socket.id, normalizedCameraId, 'replaced');
+
+        const streamKey = `${guildId}:${normalizedCameraId}`;
+        const existingStream = this.cctvStreams.get(streamKey);
+        if (existingStream) {
+            existingStream.subscribers.add(socket.id);
+            this.addSocketSession(socket.id, guildId, normalizedCameraId);
+            this.client.log(this.client.intlGet(null, 'infoCap'), `WebUI: CCTV reused ${normalizedCameraId} for socket ${socket.id}`);
+            socket.emit('cctv:status', { state: 'streaming', cameraId: normalizedCameraId });
+            return;
+        }
+
+        let camera;
+        try {
+            camera = rustplus.getCamera(normalizedCameraId);
+        } catch (error) {
+            socket.emit('cctv:error', { message: error.message || 'Unable to access camera', cameraId: normalizedCameraId });
+            return;
+        }
+
+        if (!camera) {
+            socket.emit('cctv:error', { message: 'Camera not available', cameraId: normalizedCameraId });
+            return;
+        }
+
+        this.client.log(this.client.intlGet(null, 'infoCap'), `WebUI: CCTV subscribing ${normalizedCameraId} for socket ${socket.id}`);
+
+        const stream = {
+            key: streamKey,
+            guildId: guildId,
+            cameraId: normalizedCameraId,
+            camera: camera,
+            lastFrameAt: 0,
+            onRender: null,
+            subscribers: new Set([socket.id])
+        };
+
+        stream.onRender = (frame) => {
+            const now = Date.now();
+            if (now - stream.lastFrameAt < this.cctvFrameMinIntervalMs) return;
+            stream.lastFrameAt = now;
+
+            const payload = {
+                cameraId: normalizedCameraId,
+                frame: frame.toString('base64')
+            };
+
+            stream.subscribers.forEach((subscriberId) => {
+                this.io.to(subscriberId).emit('cctv:frame', payload);
+            });
+        };
+
+        camera.on('render', stream.onRender);
+
+        try {
+            const response = await camera.subscribe();
+            if (!response || (response && response.error)) {
+                const details = response ? JSON.stringify(response) : 'no response';
+                this.client.log(this.client.intlGet(null, 'infoCap'), `WebUI: CCTV subscribe response ${normalizedCameraId}: ${details}`);
+            }
+            if (response && response.error) {
+                throw new Error(`Failed to subscribe: ${response.error}`);
+            }
+            if (!response) {
+                throw new Error('Failed to subscribe: empty response');
+            }
+        } catch (error) {
+            camera.off('render', stream.onRender);
+            const message = error && error.message ? error.message : 'Failed to subscribe';
+            socket.emit('cctv:error', { message, cameraId: normalizedCameraId });
+            this.client.log(this.client.intlGet(null, 'infoCap'), `WebUI: CCTV subscribe failed ${normalizedCameraId}: ${message}`);
+            if (error && error.stack) {
+                this.client.log(this.client.intlGet(null, 'infoCap'), `WebUI: CCTV subscribe stack ${normalizedCameraId}: ${error.stack}`);
+            }
+            return;
+        }
+
+        this.cctvStreams.set(streamKey, stream);
+        this.addSocketSession(socket.id, guildId, normalizedCameraId);
+        this.client.log(this.client.intlGet(null, 'infoCap'), `WebUI: CCTV subscribed ${normalizedCameraId} for socket ${socket.id}`);
+        socket.emit('cctv:status', { state: 'streaming', cameraId: normalizedCameraId });
+    }
+
+    async stopCctvSessionBySocket(socketId, cameraId = null, reason = 'stopped') {
+        const sessions = this.cctvSessions.get(socketId);
+        if (!sessions) return;
+
+        if (cameraId) {
+            const session = sessions.get(cameraId);
+            if (session) {
+                await this.stopCctvSession(session, reason);
+                sessions.delete(cameraId);
+            }
+        } else {
+            for (const session of sessions.values()) {
+                await this.stopCctvSession(session, reason);
+            }
+            sessions.clear();
+        }
+
+        if (sessions.size === 0) {
+            this.cctvSessions.delete(socketId);
+        }
+    }
+
+    async stopCctvSession(session, reason = 'stopped') {
+        if (!session) return;
+        const streamKey = `${session.guildId}:${session.cameraId}`;
+        const stream = this.cctvStreams.get(streamKey);
+
+        if (stream) {
+            stream.subscribers.delete(session.socketId);
+            this.client.log(this.client.intlGet(null, 'infoCap'), `WebUI: CCTV unsubscribed ${session.cameraId} for socket ${session.socketId}`);
+
+            if (stream.subscribers.size === 0) {
+                try {
+                    if (stream.camera && stream.onRender) {
+                        stream.camera.off('render', stream.onRender);
+                    }
+                    if (stream.camera && stream.camera.unsubscribe) {
+                        await stream.camera.unsubscribe();
+                    }
+                } catch (error) {
+                    this.client.log(this.client.intlGet(null, 'infoCap'), `WebUI: camera unsubscribe failed: ${error.message}`);
+                }
+
+                this.client.log(this.client.intlGet(null, 'infoCap'), `WebUI: CCTV stream closed ${session.cameraId}`);
+                this.cctvStreams.delete(streamKey);
+            }
+        }
+
+        this.io.to(session.socketId).emit('cctv:status', {
+            state: 'stopped',
+            cameraId: session.cameraId,
+            reason
+        });
+    }
+
+    addSocketSession(socketId, guildId, cameraId) {
+        const socketSessions = this.cctvSessions.get(socketId) || new Map();
+        socketSessions.set(cameraId, {
+            socketId,
+            guildId,
+            cameraId
+        });
+        this.cctvSessions.set(socketId, socketSessions);
     }
 
     getServerData(guildId, useCache = true) {

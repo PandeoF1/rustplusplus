@@ -391,11 +391,14 @@ class StatisticsManager {
     }
 
     async loadOverview() {
+        const body = document.getElementById('statisticsBody');
+        if (!body) return;
+
         try {
             const t = (key) => window.rustplusUI?.languageManager?.get(key) || key;
             const teamData = window.rustplusUI?.serverData?.team;
             if (!teamData || !teamData.players || teamData.players.length === 0) {
-                document.getElementById('statisticsBody').innerHTML = `
+                body.innerHTML = `
                     <div class="info">${t('stats.noTeamData')}</div>
                 `;
                 return;
@@ -408,7 +411,6 @@ class StatisticsManager {
                 this.apiClient.get(`/api/statistics/connections/${this.guildId}?hours=${defaultHours}&serverId=${this.serverId}`)
             ]);
 
-            const body = document.getElementById('statisticsBody');
             body.innerHTML = `
                 <div class="stats-overview">
                     <div class="stats-grid">
@@ -476,9 +478,11 @@ class StatisticsManager {
         } catch (error) {
             console.error('Error loading overview:', error);
             const t = (key) => window.rustplusUI?.languageManager?.get(key) || key;
-            document.getElementById('statisticsBody').innerHTML = `
-                <div class="error">${t('stats.failedToLoad')} ${error.message}</div>
-            `;
+            if (body) {
+                body.innerHTML = `
+                    <div class="error">${t('stats.failedToLoad')} ${error.message}</div>
+                `;
+            }
         }
     }
 

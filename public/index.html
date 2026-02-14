@@ -31,6 +31,9 @@
                     <button id="trackersNavBtn" class="header-nav-btn" data-i18n="header.trackers">
                         Trackers
                     </button>
+                    <button id="cctvNavBtn" class="header-nav-btn" data-view="view-cctv" data-main-view="main-cctv" data-i18n="header.cctv">
+                        CCTV
+                    </button>
                     <!-- Future tabs here -->
                 </nav>
             </div>
@@ -317,25 +320,56 @@
                     </div>
                 </div>
 
+                <div id="view-cctv" class="sidebar-view">
+                    <div class="cctv-panel">
+                        <h2 data-i18n="cctv.title">CCTV</h2>
+                        <div class="control-group">
+                            <label for="cctvCameraInput" data-i18n="cctv.cameraCode">Camera Code</label>
+                            <div class="cctv-input-row">
+                                <input type="text" id="cctvCameraInput" placeholder="e.g. DOME1"
+                                    data-i18n-placeholder="cctv.cameraPlaceholder" list="cctvCodeSuggestions">
+                                <datalist id="cctvCodeSuggestions"></datalist>
+                                <button id="cctvAddBtn" class="btn-save" data-i18n="cctv.action.add">Add</button>
+                            </div>
+                        </div>
+                        <div class="cctv-actions">
+                            <button id="cctvStartAllBtn" class="btn-save" data-i18n="cctv.action.startAll">Start All</button>
+                            <button id="cctvStopBtn" class="btn-cancel" data-i18n="cctv.action.stopAll">Stop All</button>
+                        </div>
+                        <div class="cctv-list" id="cctvCameraList"></div>
+                        <div class="cctv-status">
+                            <span class="cctv-status-label" data-i18n="cctv.status.label">Status:</span>
+                            <span id="cctvStatusText" data-i18n="cctv.status.idle">Idle</span>
+                        </div>
+                    </div>
+                </div>
+
                 <script>
                     // Simple inline script to handle tab switching
                     document.addEventListener('DOMContentLoaded', () => {
                         const navBtns = document.querySelectorAll('.nav-btn');
                         const headerNavBtns = document.querySelectorAll('.header-nav-btn');
                         const allNavBtns = [...navBtns, ...headerNavBtns];
-                        const views = document.querySelectorAll('.sidebar-view');
+                        const sidebarViews = document.querySelectorAll('.sidebar-view');
+                        const mainViews = document.querySelectorAll('.main-view');
 
                         allNavBtns.forEach(btn => {
                             btn.addEventListener('click', () => {
                                 const viewId = btn.getAttribute('data-view');
                                 if (!viewId) return;
 
+                                const mainViewId = btn.getAttribute('data-main-view') || 'main-map';
+
                                 // Update active states
                                 document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
                                 document.querySelectorAll('.header-nav-btn').forEach(b => b.classList.remove('active'));
-                                document.querySelectorAll('.sidebar-view').forEach(v => {
+                                sidebarViews.forEach(v => {
                                     v.classList.remove('active');
-                                    v.style.display = 'none'; // Ensure clean toggle
+                                    v.style.display = 'none';
+                                });
+                                mainViews.forEach(v => {
+                                    v.classList.remove('active');
+                                    v.style.display = 'none';
                                 });
 
                                 // Activate current
@@ -345,13 +379,19 @@
                                     view.classList.add('active');
                                     view.style.display = 'block';
                                 }
+
+                                const mainView = document.getElementById(mainViewId);
+                                if (mainView) {
+                                    mainView.classList.add('active');
+                                    mainView.style.display = mainView.classList.contains('cctv-container') ? 'flex' : 'block';
+                                }
                             });
                         });
                     });
                 </script>
             </aside>
 
-            <main class="map-container">
+            <main class="map-container main-view active" id="main-map">
                 <div id="mapWrapper" style="position: relative;">
                     <canvas id="map-background-canvas"
                         style="position: absolute; top: 0; left: 0; z-index: 1;"></canvas>
@@ -367,6 +407,16 @@
                     <button id="toggleFullscreen" title="Toggle Fullscreen">⛶</button>
                 </div>
             </main>
+
+            <section class="cctv-container main-view" id="main-cctv">
+                <div class="cctv-frame">
+                    <div class="cctv-frame-header">
+                        <div class="cctv-title" data-i18n="cctv.stream.title">CCTV Stream</div>
+                        <div id="cctvIndicator" class="cctv-indicator idle" data-i18n="cctv.status.idle">Idle</div>
+                    </div>
+                    <div class="cctv-grid" id="cctvGrid"></div>
+                </div>
+            </section>
         </div>
 
         <footer>
