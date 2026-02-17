@@ -635,12 +635,14 @@ class RustPlusWebUI {
             this.renderCctvCameraList();
             this.updateCctvIndicator();
             this.updateCctvTileStatus(cameraId);
+            this.renderCctvGrid();
         });
 
         this.socket.on('cctv:frame', (data) => {
             if (!data || !data.frame || !data.cameraId) return;
+            console.log("CCTV frame", data.cameraId, "len", data.frame.length, "head", data.frame.slice(0, 10));
             this.renderCctvFrame(data.cameraId, data.frame);
-        });
+        });          
 
         this.socket.on('cctv:error', (data) => {
             const message = data && data.message ? data.message : 'Camera error';
@@ -1252,20 +1254,21 @@ class RustPlusWebUI {
     renderCctvFrame(cameraId, frameBase64) {
         const tile = this.cctvState.tileRefs[cameraId];
         if (!tile) return;
-
+      
         tile.img.src = `data:image/png;base64,${frameBase64}`;
         tile.placeholder.style.display = 'none';
-
-        if (this.cctvFrameTimeouts[cameraId]) {
-            clearTimeout(this.cctvFrameTimeouts[cameraId]);
-        }
+      
+        this.cctvState.statusByCamera[cameraId] = 'live';
+        this.updateCctvTileStatus(cameraId);
+      
+        if (this.cctvFrameTimeouts[cameraId]) clearTimeout(this.cctvFrameTimeouts[cameraId]);
         this.cctvFrameTimeouts[cameraId] = setTimeout(() => {
-            this.cctvState.statusByCamera[cameraId] = 'idle';
-            this.updateCctvTileStatus(cameraId);
-            tile.placeholder.style.display = 'flex';
+          this.cctvState.statusByCamera[cameraId] = 'idle';
+          this.updateCctvTileStatus(cameraId);
+          tile.placeholder.style.display = 'flex';
         }, 5000);
     }
-
+    
     clearCctvFrame(cameraId) {
         const tile = this.cctvState.tileRefs[cameraId];
         if (!tile) return;
