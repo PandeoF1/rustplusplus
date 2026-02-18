@@ -256,6 +256,8 @@ async function pairingServer(client, guild, title, message, body) {
         cargoShipEgressTimeMs: server ? server.cargoShipEgressTimeMs : Constants.DEFAULT_CARGO_SHIP_EGRESS_TIME_MS,
         oilRigLockedCrateUnlockTimeMs: server ? server.oilRigLockedCrateUnlockTimeMs :
             Constants.DEFAULT_OIL_RIG_LOCKED_CRATE_UNLOCK_TIME_MS,
+        deepSeaWipeCooldownMs: server ? server.deepSeaWipeCooldownMs : Constants.DEFAULT_DEEP_SEA_WIPE_COOLDOWN_MS,
+        deepSeaWipeDurationMs: server ? server.deepSeaWipeDurationMs : Constants.DEFAULT_DEEP_SEA_WIPE_DURATION_MS,
         timeTillDay: server ? server.timeTillDay : null,
         timeTillNight: server ? server.timeTillNight : null
     };

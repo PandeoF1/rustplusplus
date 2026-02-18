@@ -184,10 +184,20 @@
         "name": "F1 Grenade",
         "description": "A reliable military grenade that can be thrown a short distance. Deadly at close range on detonation."
     },
+    "146221721": {
+        "shortname": "heavy.scientist.plushie",
+        "name": "Heavy Scientist Plushie",
+        "description": "Heavy Scientist Plushie"
+    },
     "158303804": {
         "shortname": "knife.bone.obsidian",
         "name": "Obsidian Bone Knife",
         "description": "Melee weapon crafted from obsidian. Good for harvesting carcases."
+    },
+    "162882477": {
+        "shortname": "50cal.mounted",
+        "name": "#50cal",
+        "description": "#50cal.desc"
     },
     "170758448": {
         "shortname": "vehicle.1mod.cockpit.with.engine",
@@ -324,6 +334,11 @@
         "name": "Large Medkit",
         "description": "A large medkit that heals you to max health over time and stops any bleeding instantly.\n\nGuarantees 100% recovery from the wounded state if placed in your toolbar."
     },
+    "255305250": {
+        "shortname": "ladder.wooden.boat",
+        "name": "Wooden Boat Ladder",
+        "description": "A ladder will help you climb walls on any boat."
+    },
     "261913429": {
         "shortname": "firework.volcano",
         "name": "White Volcano Firework",
@@ -454,6 +469,11 @@
         "name": "Chippy Arcade Game",
         "description": "An Arcade Machine"
     },
+    "362863314": {
+        "shortname": "heartballoon2025",
+        "name": "Heart Balloon",
+        "description": "A heart-shaped balloon to use as decoration and for you to celebrate. You can write on it."
+    },
     "363163265": {
         "shortname": "hosetool",
         "name": "Hose Tool",
@@ -474,10 +494,20 @@
         "name": "Pure Harvesting Tea",
         "description": "A pure harvesting tea, provides hydration and temporarily increases the amount of resources you receive from harvesting corpses a large amount."
     },
+    "381595627": {
+        "shortname": "neonsigntr",
+        "name": "Twitch Rivals Neon Sign",
+        "description": "A Twitch Rivals Light-Up Neon Sign"
+    },
     "385099196": {
         "shortname": "4module car chassis",
         "name": "4 Module Car Chassis",
         "description": "4 Module Car Chassis"
+    },
+    "385645417": {
+        "shortname": "ammo.paintball",
+        "name": "Paintball",
+        "description": "Ammo for a paintball gun."
     },
     "390728933": {
         "shortname": "clone.yellow.berry",
@@ -493,6 +523,11 @@
         "shortname": "ball",
         "name": "Soccer Ball",
         "description": "Soccer Ball"
+    },
+    "405905095": {
+        "shortname": "sail",
+        "name": "Sail",
+        "description": "A slow but effective boat sail, made from scraps of fabric hastily stitched together. More sails will generate more speed."
     },
     "418081930": {
         "shortname": "wood.armor.jacket",
@@ -513,6 +548,11 @@
         "shortname": "fluid.switch",
         "name": "Fluid Switch & Pump",
         "description": "A simple switch that enables fluid to pass through. Can be switched on/off manually or via electricity. Can also pump water upwards to higher entities when powered."
+    },
+    "445662288": {
+        "shortname": "scientist.plushie",
+        "name": "Scientist Plushie",
+        "description": "Scientist Plushie"
     },
     "446206234": {
         "shortname": "torchholder",
@@ -572,7 +612,7 @@
     "504109620": {
         "shortname": "sculpture.ice",
         "name": "Ice Sculpture",
-        "description": "An block of ice you can sculpt."
+        "description": "A block of ice you can sculpt and light up with electric power."
     },
     "507284030": {
         "shortname": "cocoknight.armor.pants",
@@ -588,6 +628,11 @@
         "shortname": "flameturret",
         "name": "Flame Turret",
         "description": "Automated Flame turret. Requires Low Grade Fuel. Sprays flames when triggered."
+    },
+    "533993281": {
+        "shortname": "rifle.lr300.space",
+        "name": "Space LR-300 Assault Rifle",
+        "description": "Non-standard-issue high-powered light assault rifle for only the most elite of practitioners."
     },
     "537946062": {
         "shortname": "pilot.hazmat.box.wooden",
@@ -633,6 +678,11 @@
         "shortname": "secretlabchair",
         "name": "Secretlab Chair",
         "description": "A luxurious, comfortable chair for long sessions of CCTV watching."
+    },
+    "571949408": {
+        "shortname": "mixedclumpballoon2025",
+        "name": "Clump of Mixed Balloons",
+        "description": "A clump of mixed balloons to use as decoration and for you to celebrate."
     },
     "573676040": {
         "shortname": "coffin.storage",
@@ -859,6 +909,11 @@
         "name": "Orchid",
         "description": "Smells nice."
     },
+    "738611016": {
+        "shortname": "window.paintable",
+        "name": "Paintable Window",
+        "description": "A window with paintable glass"
+    },
     "742745918": {
         "shortname": "industrial.splitter",
         "name": "Industrial Splitter",
@@ -978,6 +1033,11 @@
         "shortname": "sign.post.town.roof",
         "name": "Two Sided Town Sign Post",
         "description": "A double sided town sign post, with roof, that you can plant into terrain."
+    },
+    "829641693": {
+        "shortname": "anchor",
+        "name": "Anchor",
+        "description": "A heavy anchor to stop your boat drifting."
     },
     "830839496": {
         "shortname": "seed.red.berry",
@@ -1112,7 +1172,7 @@
     "935606207": {
         "shortname": "minigun",
         "name": "Minigun",
-        "description": "A military issue belt-fed machine gun with that must be spun up to fire. Fires rapidly once spun up at the expense of movement speed."
+        "description": "A military issue belt-fed machine gun that must be spun up to fire. Fires rapidly at the expense of movement speed."
     },
     "935692442": {
         "shortname": "tshirt.long",
@@ -1138,6 +1198,11 @@
         "shortname": "tincan.alarm",
         "name": "Tin Can Alarm",
         "description": "A primitive perimeter alarm made from hanging tin cans. Clatters loudly when disturbed, alerting you to any trespassers. Simple but effective."
+    },
+    "963400638": {
+        "shortname": "speechbubbleballoon2025",
+        "name": "Speech Bubble Balloon",
+        "description": "A speech bubble-shaped balloon to use as decoration and for you to celebrate. You can write on it."
     },
     "963906841": {
         "shortname": "rock",
@@ -1519,6 +1584,11 @@
         "name": "Timed Explosive Charge",
         "description": "C4, useful for breaking into bases."
     },
+    "1248383659": {
+        "shortname": "50cal.mounted.right",
+        "name": "#50cal",
+        "description": "#50cal.desc"
+    },
     "1258768145": {
         "shortname": "sunglasses02black",
         "name": "Sunglasses",
@@ -1568,6 +1638,11 @@
         "shortname": "electric.xorswitch",
         "name": "XOR Switch",
         "description": "An exclusive-or logic gate that allows electrical passthrough if ONLY ONE input receives power, passthrough amount is whichever single input is active. If BOTH inputs recieve power, passthrough will be zero."
+    },
+    "1295301598": {
+        "shortname": "latexballoon2025",
+        "name": "Latex Balloon",
+        "description": "A latex balloon to use as decoration and for you to celebrate. You can write on it."
     },
     "1296788329": {
         "shortname": "ammo.rocket.seeker",
@@ -1814,6 +1889,11 @@
         "name": "Hunting Bow",
         "description": "Hunting Bow, useful for short to medium range combat and hunting."
     },
+    "1447138977": {
+        "shortname": "lightup.xxl",
+        "name": "Light-Up Frame XXL",
+        "description": "An extra extra large light up frame"
+    },
     "1451568081": {
         "shortname": "wall.frame.fence.gate",
         "name": "Chainlink Fence Gate",
@@ -1989,6 +2069,11 @@
         "name": "Abyss Metal Pickaxe",
         "description": "Plucked from the abyss, this Metal Pickaxe is a prized possession for any survivor"
     },
+    "1562867678": {
+        "shortname": "sign.artistcanvas.xl",
+        "name": "Artist Canvas XL",
+        "description": "An extra large canvas for seamless murals"
+    },
     "1568388703": {
         "shortname": "diesel_barrel",
         "name": "Diesel Fuel",
@@ -2054,6 +2139,11 @@
         "name": "Confetti Cannon",
         "description": "Blast a cloud of birthday themed confetti cheer."
     },
+    "1604092540": {
+        "shortname": "twitchrivals2025sofa",
+        "name": "Twitch Rivals 2025 Sofa",
+        "description": "A comfortable twitch branded sofa. A decorative item which provides comfort and seats two."
+    },
     "1604837581": {
         "shortname": "wooden.shield",
         "name": "Wooden Shield",
@@ -2063,6 +2153,11 @@
         "shortname": "shirt.tanktop",
         "name": "Tank Top",
         "description": "A tank top, comes with free stains. Basic protection, but better than nothing."
+    },
+    "1609921845": {
+        "shortname": "sign.artistcanvas.xs",
+        "name": "Artist Canvas Small",
+        "description": "A small canvas for seamless murals"
     },
     "1614528785": {
         "shortname": "frankensteins.monster.03.torso",
@@ -2093,6 +2188,11 @@
         "shortname": "wallpaper.tool",
         "name": "Wallpaper Tool",
         "description": "Transform your base from a rusty shack to a cozy hideout! This tool lets you apply wallpaper on walls, floors and ceilings. A nice touch of style - until the next raid, at least.\n\nPress [+attack2] to select your skin."
+    },
+    "1633553557": {
+        "shortname": "hat.candle.birthday",
+        "name": "Birthday Candle Hat",
+        "description": "A hat with a birthday candle on top. You can turn the candle on in your inventory."
     },
     "1638322904": {
         "shortname": "ammo.rocket.fire",
@@ -2349,6 +2449,11 @@
         "name": "Custom SMG",
         "description": "A rapid-firing Machine Gun. Sacrifices accuracy and distance for speed."
     },
+    "1801656689": {
+        "shortname": "lightup.xl",
+        "name": "Light-Up Frame XL",
+        "description": "An extra large light-up frame"
+    },
     "1803831286": {
         "shortname": "toolgun",
         "name": "Garry's Mod Tool Gun",
@@ -2398,6 +2503,11 @@
         "shortname": "divertorch",
         "name": "Abyss Torch",
         "description": "Illuminate the underwater depths with this durable and waterproof diving torch"
+    },
+    "1849409072": {
+        "shortname": "silly.horse.mask",
+        "name": "Silly Horse Mask",
+        "description": "A silly rubber horse mask to celebrate Lunar New Year 2026. Comes in three varieties."
     },
     "1849887541": {
         "shortname": "electric.fuelgenerator.small",
@@ -2539,6 +2649,11 @@
         "name": "Black Raspberries",
         "description": "Black Raspberries picked from berry bushes. Eating it provides a small boost to health, hunger, and thirst."
     },
+    "1933140008": {
+        "shortname": "ptboat",
+        "name": "PT Boat",
+        "description": null
+    },
     "1937380239": {
         "shortname": "frontier_hatchet",
         "name": "Frontier Hatchet",
@@ -2623,6 +2738,11 @@
         "shortname": "burlap.trousers",
         "name": "Burlap Trousers",
         "description": "Trousers made out of burlap."
+    },
+    "1993693904": {
+        "shortname": "boatbuildingstation",
+        "name": "Boat Building Station",
+        "description": "A deployable building station, creates a stable workspace on the water to build or edit your floating wooden refuge."
     },
     "2005491391": {
         "shortname": "weapon.mod.extendedmags",
@@ -2798,6 +2918,11 @@
         "shortname": "4module car",
         "name": "4 Module Car",
         "description": "4 Module Car"
+    },
+    "-1467876094": {
+        "shortname": "50cal.mounted.left",
+        "name": "#50cal",
+        "description": "#50cal.desc"
     },
     "-880494890": {
         "shortname": "abyss.barrel.horizontal",
@@ -3104,6 +3229,11 @@
         "name": "Blunderbuss",
         "description": "A Shotgun with two barrels allowing two shots to be fired in quick succession before needing to reload."
     },
+    "-321247698": {
+        "shortname": "boat.planner",
+        "name": "Boat Building Plan",
+        "description": "A boat plan. You can use this to craft boats - right click when equipped for more options."
+    },
     "-1478094705": {
         "shortname": "boogieboard",
         "name": "Boogie Board",
@@ -3143,6 +3273,16 @@
         "shortname": "can.tuna",
         "name": "Can of Tuna",
         "description": "Chunked tuna found as loot. Eating it provides a small boost to health, hunger, and thirst."
+    },
+    "-34498533": {
+        "shortname": "cannon",
+        "name": "Cannon",
+        "description": "A heavy mountable cannon for your boat with a short fuse. Questionable accuracy but high damage."
+    },
+    "-411735114": {
+        "shortname": "cannonball",
+        "name": "Cannonball",
+        "description": "Round solid ammo for the cannon"
     },
     "-912398867": {
         "shortname": "cassette.medium",
@@ -3214,6 +3354,11 @@
         "name": "Chocolate Bar",
         "description": "Chocolate Bar found as loot. Eating it provides a small boost to health, hunger, and thirst."
     },
+    "-105343718": {
+        "shortname": "circleballoon2025",
+        "name": "Circle Balloon",
+        "description": "A circular balloon to use as decoration and for you to celebrate. You can write on it."
+    },
     "-778875547": {
         "shortname": "clone.corn",
         "name": "Corn Clone",
@@ -3263,6 +3408,11 @@
         "shortname": "cocoknight.armor.helmet",
         "name": "Coconut Armor Helmet",
         "description": "A shoddy helmet made from coconut, provides some basic protection from melee and ranged attacks."
+    },
+    "-24571537": {
+        "shortname": "coconut",
+        "name": "Coconut",
+        "description": "A coconut. Consuming it restores hydration, and the flesh yields a modest amount of calories."
     },
     "-803263829": {
         "shortname": "coffeecan.helmet",
@@ -3354,6 +3504,11 @@
         "name": "Diving Mask",
         "description": "A diving mask that provides clear vision under water at the cost of reduced peripheral vision."
     },
+    "-1559420426": {
+        "shortname": "diving.tank.double",
+        "name": "Double Diving Tank",
+        "description": "An oxygen tank that enables breathing under water for a period of time. Can be refilled at a workbench. Holds 80% more Oxygen than a standard diving tank"
+    },
     "-2022172587": {
         "shortname": "diving.tank",
         "name": "Diving Tank",
@@ -3378,6 +3533,11 @@
         "shortname": "door.double.hinged.wood",
         "name": "Wood Double Door",
         "description": "A Cheap door to secure your base. Its vulnerability to fire and weak explosive resistance makes the door a temporary solution to securing your base. Due to its flaws you should look at upgrading to a higher tier door such as Sheet Metal.\n\nThe Wooden Door can take two kinds of locks the basic Key Lock and the Code Lock. To pick up the door, remove any locks and open, hold down the E (USE) key and select 'Pickup'."
+    },
+    "-1063073030": {
+        "shortname": "door.hinged.boat.wood",
+        "name": "Wooden Boat Door",
+        "description": "Secure your boat with this wooden door"
     },
     "-2067472972": {
         "shortname": "door.hinged.metal",
@@ -3408,6 +3568,11 @@
         "shortname": "drumkit",
         "name": "Junkyard Drum Kit",
         "description": "An array of pots, pans and buckets that passes as a serviceable Drum Kit. Three cymbals, some Tom Drums and a Kick Drum means you can easily lay down a beat."
+    },
+    "-1779203452": {
+        "shortname": "easel",
+        "name": "Portable Easel",
+        "description": "A portable easel for painting plein air!"
     },
     "-1002156085": {
         "shortname": "easter.goldegg",
@@ -3836,23 +4001,33 @@
     },
     "-996235148": {
         "shortname": "goldframe.large",
-        "name": "Gold Frame large",
-        "description": "A large gold frame"
+        "name": "Ornate Frame large",
+        "description": "A large ornate frame"
     },
     "-1901993050": {
         "shortname": "goldframe.medium",
-        "name": "Gold Frame Medium",
-        "description": "A medium gold frame"
+        "name": "Ornate Frame Medium",
+        "description": "A medium ornate frame"
     },
     "-1836526520": {
         "shortname": "goldframe.small",
-        "name": "Gold Frame Small",
-        "description": "A small gold frame"
+        "name": "Ornate Frame Small",
+        "description": "A small ornate frame"
     },
     "-1528767189": {
         "shortname": "goldframe.standing",
-        "name": "Gold Frame Standing",
-        "description": "A standing gold frame"
+        "name": "Ornate Frame Standing",
+        "description": "A standing ornate frame"
+    },
+    "-1430299277": {
+        "shortname": "goldframe.xl",
+        "name": "Ornate Frame XL",
+        "description": "An extra large ornate frame"
+    },
+    "-1322332389": {
+        "shortname": "goldframe.xxl",
+        "name": "Ornate Frame XXL",
+        "description": "An extra extra large ornate frame"
     },
     "-1804515496": {
         "shortname": "goldmirror.medium",
@@ -3914,11 +4089,6 @@
         "name": "Hot Air Balloon Armor",
         "description": "Armor for the Hot Air Balloon"
     },
-    "-1759188988": {
-        "shortname": "habrepair",
-        "name": "Hot Air Balloon",
-        "description": "A Hot Air Balloon."
-    },
     "-1923843855": {
         "shortname": "half.bamboo.shelves",
         "name": "Half Height Bamboo Shelves",
@@ -3958,6 +4128,11 @@
         "shortname": "hat.dragonmask",
         "name": "Dragon Mask",
         "description": "A special dragon mask to celebrate Chinese New Year"
+    },
+    "-418359052": {
+        "shortname": "hat.horsemask",
+        "name": "Horse Mask",
+        "description": "A Beautifully crafted red and gold Horse mask to celebrate the 2026 Lunar New Year. This item replaces the wolf headdress."
     },
     "-1539025626": {
         "shortname": "hat.miner",
@@ -4019,6 +4194,11 @@
         "name": "Scientist Suit",
         "description": "A hazmat suit made from radiation resistant rubber."
     },
+    "-1937799374": {
+        "shortname": "hazmatsuit_scientist_naval",
+        "name": "Naval Scientist Suit",
+        "description": "A hazmat suit made from radiation resistant rubber."
+    },
     "-1958316066": {
         "shortname": "hazmatsuit_scientist_peacekeeper",
         "name": "Scientist Suit",
@@ -4078,6 +4258,11 @@
         "shortname": "honeycomb",
         "name": "Honeycomb",
         "description": "Building blocks of a hive, taken from a natural beehive. Can be cooked in a furnace to guarantee honey, or extracted for honey and a small chance of a nucleus."
+    },
+    "-2068194497": {
+        "shortname": "horse.armor.lny26",
+        "name": "Lunar New Year Horse Armor",
+        "description": "A full body Lunar New Year themed armor for a horse. Provides strong protection for you and your steed, at the cost of greatly reduced movement speed."
     },
     "-1323101799": {
         "shortname": "horse.saddle.double",
@@ -4233,6 +4418,11 @@
         "shortname": "largecandles",
         "name": "Large Candle Set",
         "description": "Large Candles"
+    },
+    "-1440443161": {
+        "shortname": "latexclumpballoon2025",
+        "name": "Clump of Latex Balloons",
+        "description": "A clump of latex balloons to use as decoration and for you to celebrate."
     },
     "-73195037": {
         "shortname": "legacy bow",
@@ -4419,6 +4609,11 @@
         "name": "Movember Moustache",
         "description": "A magnificent moustache (it acts as a hairy bandana) - all proceeds go to Movember, a charity promoting men's health awareness,"
     },
+    "-648077743": {
+        "shortname": "mrspice.can",
+        "name": "Mr Spice Can",
+        "description": "A delicious and refreshing beverage, with a delightful spicy undertone."
+    },
     "-1123473824": {
         "shortname": "multiplegrenadelauncher",
         "name": "Multiple Grenade Launcher",
@@ -4458,6 +4653,21 @@
         "shortname": "paddlingpool",
         "name": "Paddling Pool",
         "description": "A small inflatable pool that you can fill up with water."
+    },
+    "-1039234836": {
+        "shortname": "paintabletarget.reactive",
+        "name": "Paintable Reactive Target",
+        "description": "A reactive target practice in which you can paint whatever you want"
+    },
+    "-707792719": {
+        "shortname": "paintballgun",
+        "name": "Paintball Gun",
+        "description": "An air gun that uses compressed gas to fire and make targets works of art."
+    },
+    "-1014934560": {
+        "shortname": "paintballoveralls.suit",
+        "name": "Paintball Overalls",
+        "description": "A set of paintball overalls."
     },
     "-1695367501": {
         "shortname": "pants.shorts",
@@ -4518,6 +4728,11 @@
         "shortname": "pistol.water",
         "name": "Water Pistol",
         "description": "A small water gun that doesn't require pumping, but has a lower range and output."
+    },
+    "-952411326": {
+        "shortname": "plank",
+        "name": "Plank",
+        "description": "Crude boarding plank thrown together from ruined floorboards, watch out for splinters."
     },
     "-280812482": {
         "shortname": "planter.triangle",
@@ -4671,7 +4886,7 @@
     },
     "-1104881824": {
         "shortname": "rug.bear",
-        "name": "Rug Bear Skin",
+        "name": "Bear Skin Rug",
         "description": "A decorative rug that can be placed on walls, floors, and ceilings. Provides comfort when in close proximity."
     },
     "-1985799200": {
@@ -4746,23 +4961,33 @@
     },
     "-1094453063": {
         "shortname": "scrapframe.large",
-        "name": "Scrap Frame large",
-        "description": "A large scrap frame"
+        "name": "Shutter Frame large",
+        "description": "A large shutter frame"
     },
     "-1060567807": {
         "shortname": "scrapframe.medium",
-        "name": "Scrap Frame Medium",
-        "description": "A medium scrap frame"
+        "name": "Shutter Frame Medium",
+        "description": "A medium shutter frame"
     },
     "-498301781": {
         "shortname": "scrapframe.small",
-        "name": "Scrap Frame Small",
-        "description": "A small scrap frame"
+        "name": "Shutter Frame Small",
+        "description": "A small shutter frame"
     },
     "-1774190142": {
         "shortname": "scrapframe.standing",
-        "name": "Scrap Frame Standing",
-        "description": "A standing scrap frame"
+        "name": "Shutter Frame Standing",
+        "description": "A standing shutter frame"
+    },
+    "-1244287686": {
+        "shortname": "scrapframe.xl",
+        "name": "Shutter Frame XL",
+        "description": "An extra large shutter frame"
+    },
+    "-1211801774": {
+        "shortname": "scrapframe.xxl",
+        "name": "Shutter Frame XXL",
+        "description": "An extra extra large shutter frame"
     },
     "-82758111": {
         "shortname": "scrapmirror.large",
@@ -4778,11 +5003,6 @@
         "shortname": "scrapmirror.standing",
         "name": "Scrap Mirror Standing",
         "description": "A standing scrap mirror"
-    },
-    "-1884328185": {
-        "shortname": "scraptransportheli.repair",
-        "name": "Scrap Transport Helicopter",
-        "description": null
     },
     "-374457631": {
         "shortname": "sedan",
@@ -4888,6 +5108,26 @@
         "shortname": "siegetower",
         "name": "Siege Tower",
         "description": "A rolling siege tower, providing cover and access to enemy bases. Can be locked with your own door. Can be towed by horses."
+    },
+    "-946599114": {
+        "shortname": "sign.artistcanvas.l",
+        "name": "Artist Canvas Standing",
+        "description": "A standing canvas for seamless murals"
+    },
+    "-946599113": {
+        "shortname": "sign.artistcanvas.m",
+        "name": "Artist Canvas Large",
+        "description": "A large sized canvas for seamless murals"
+    },
+    "-946599131": {
+        "shortname": "sign.artistcanvas.s",
+        "name": "Artist Canvas Medium",
+        "description": "A medium canvas for seamless murals"
+    },
+    "-816769770": {
+        "shortname": "sign.artistcanvas.xxl",
+        "name": "Artist Canvas XXL",
+        "description": "An extra, extra large canvas for seamless murals"
     },
     "-1647846966": {
         "shortname": "sign.hanging.ornate",
@@ -5019,10 +5259,20 @@
         "name": "Small Candle Set",
         "description": "Small Candles"
     },
+    "-2115299615": {
+        "shortname": "smallengine",
+        "name": "Small Boat Engine",
+        "description": "A punchy boat engine made from scavenged parts, not good for the environment. More engines means more speed."
+    },
     "-1039528932": {
         "shortname": "smallwaterbottle",
         "name": "Small Water Bottle",
         "description": "A Small Water Bottle. Left click to drink, right click to fill from water sources, or to pour out."
+    },
+    "-158718378": {
+        "shortname": "small_ramp",
+        "name": "Small Ramp",
+        "description": "Deployable wooden ramp cobbled together from recycled doors, probably sturdy enough. Unfolds for boarding enemy vessels."
     },
     "-695978112": {
         "shortname": "smart.alarm",
@@ -5114,10 +5364,20 @@
         "name": "Spray Can Decal",
         "description": null
     },
+    "-1782127806": {
+        "shortname": "starballoon2025",
+        "name": "Star Balloon",
+        "description": "A star-shaped balloon to use as decoration and for you to celebrate. You can write on it."
+    },
     "-369760990": {
         "shortname": "stash.small",
         "name": "Small Stash",
         "description": "A hidden, burried stash to keep your items safe. After placing, return to the stash and aim at the ground where you hid it and it will reveal itself."
+    },
+    "-1866909924": {
+        "shortname": "steeringwheel.boat",
+        "name": "Steering Wheel",
+        "description": "A lockable steering wheel for your modular boat with some suspiciously shaped handles."
     },
     "-465682601": {
         "shortname": "stocking.large",
@@ -5268,11 +5528,6 @@
         "shortname": "twitchrivalsflag",
         "name": "Twitch Rivals Flag",
         "description": "A wearable flag for Twitch Rivals"
-    },
-    "-1683726934": {
-        "shortname": "twowaymirror.window",
-        "name": "Two-Way Mirror",
-        "description": "A Two-Way mirror"
     },
     "-1802083073": {
         "shortname": "valve3",

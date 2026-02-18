@@ -1,13 +1,13 @@
-version: '3.3'
 services:
-    app:
-        volumes:
-            - ./credentials:/app/credentials
-            - ./instances:/app/instances
-            - ./logs:/app/logs
-            - ./maps:/app/maps
-        environment:
-            - RPP_DISCORD_CLIENT_ID=111....1111
-            - RPP_DISCORD_TOKEN=token
-        container_name: rpp
-        image: ghcr.io/alexemanuelol/rustplusplus
+  rustplusbot:
+    image: ghcr.io/faithix/rustplusplus:master
+    container_name: rustplusbot
+    environment:
+      - RPP_DISCORD_TOKEN=TOKEN
+      - RPP_DISCORD_CLIENT_ID=CLIENT_ID
+    volumes:
+      - ./logs:/app/logs
+      - ./instances:/app/instances
+      - ./credentials:/app/credentials
+      - ./maps:/app/maps
+    restart: unless-stopped
