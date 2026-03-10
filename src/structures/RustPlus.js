@@ -2887,7 +2887,8 @@ class RustPlus extends RustPlusLib {
     getCommandDeepSea(isInfoChannel = false) {
         const instance = Client.client.getInstance(this.guildId);
         const deepSeaSettings = instance.serverList[this.serverId];
-        const deepSeaWipeCooldown = deepSeaSettings.deepSeaWipeCooldownMs;
+        const deepSeaMinWipeCooldown = deepSeaSettings.deepSeaMinWipeCooldownMs;
+        const deepSeaMaxWipeCooldown = deepSeaSettings.deepSeaMaxWipeCooldownMs;
         const deepSeaWipeDuration = deepSeaSettings.deepSeaWipeDurationMs;
         const wasOnMap = this.mapMarkers.timeSinceDeepSeaWasOnMap;
         const isOnMap = this.mapMarkers.timeSinceDeepSeaSpawned;
@@ -2919,10 +2920,19 @@ class RustPlus extends RustPlusLib {
             });
         }
 
-        const respawnSeconds = Math.max(0, (deepSeaWipeCooldown - (now - wasOnMap)) / 1000);
+        const respawnMinSeconds = Math.max(0, (deepSeaMinWipeCooldown - (now - wasOnMap)) / 1000);
+        const respawnMaxSeconds = Math.max(0, (deepSeaMaxWipeCooldown - (now - wasOnMap)) / 1000);
+        if (respawnMinSeconds === 0) {
+            return Client.client.intlGet(this.guildId, 'deepSeaCanRespawnNow', {
+                time: Timer.secondsToFullScale(secondsSince),
+                respawnMax: Timer.secondsToFullScale(respawnMaxSeconds, 's')
+            });
+        }
+
         return Client.client.intlGet(this.guildId, 'timeSinceDeepSeaWasOnMap', {
             time: Timer.secondsToFullScale(secondsSince),
-            respawn: Timer.secondsToFullScale(respawnSeconds, 's')
+            respawnMin: Timer.secondsToFullScale(respawnMinSeconds, 's'),
+            respawnMax: Timer.secondsToFullScale(respawnMaxSeconds, 's')
         });
     }
 }

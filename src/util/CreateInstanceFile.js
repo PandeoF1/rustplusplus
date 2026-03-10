@@ -1,5 +1,6 @@
 /*
     Copyright (C) 2022 Alexander Emanuelsson (alexemanuelol)
+    Copyright (C) 2026 FaiThiX
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -66,6 +67,9 @@ module.exports = (client, guild) => {
             teamChatColors: {},
             blacklist: {
                 discordIds: [],
+                steamIds: []
+            },
+            whitelist: {
                 steamIds: []
             },
             aliases: []
@@ -185,6 +189,10 @@ module.exports = (client, guild) => {
         }
         if (!instance.blacklist.hasOwnProperty('discordIds')) instance.blacklist['discordIds'] = [];
         if (!instance.blacklist.hasOwnProperty('steamIds')) instance.blacklist['steamIds'] = [];
+        if (!instance.hasOwnProperty('whitelist')) instance.whitelist = {
+            steamIds: []
+        }
+        if (!instance.whitelist.hasOwnProperty('steamIds')) instance.whitelist['steamIds'] = [];
         if (!instance.hasOwnProperty('aliases')) instance.aliases = [];
 
         for (const serverId of Object.keys(instance.serverList)) {
@@ -210,8 +218,11 @@ module.exports = (client, guild) => {
         if (!content.hasOwnProperty('oilRigLockedCrateUnlockTimeMs')) {
             content.oilRigLockedCrateUnlockTimeMs = Constants.DEFAULT_OIL_RIG_LOCKED_CRATE_UNLOCK_TIME_MS;
         }
-        if (!content.hasOwnProperty('deepSeaWipeCooldownMs')) {
-            content.deepSeaWipeCooldownMs = Constants.DEFAULT_DEEP_SEA_WIPE_COOLDOWN_MS;
+        if (!content.hasOwnProperty('deepSeaMinWipeCooldownMs')) {
+            content.deepSeaMinWipeCooldownMs = Constants.DEFAULT_DEEP_SEA_MIN_WIPE_COOLDOWN_MS;
+        }
+        if (!content.hasOwnProperty('deepSeaMaxWipeCooldownMs')) {
+            content.deepSeaMaxWipeCooldownMs = Constants.DEFAULT_DEEP_SEA_MAX_WIPE_COOLDOWN_MS;
         }
         if (!content.hasOwnProperty('deepSeaWipeDurationMs')) {
             content.deepSeaWipeDurationMs = Constants.DEFAULT_DEEP_SEA_WIPE_DURATION_MS;
